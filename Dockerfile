@@ -148,22 +148,18 @@ RUN if [ "$RAILS_ENV" != "production" ]; then \
   fi
 
 COPY --from=pre-builder /gems/ /gems/
-COPY --from=pre-builder /app /app
+COPY --from=pre-builder /app /chatwoot
 
-# Copy .git_sha file from pre-builder stage
-COPY --from=pre-builder /app/.git_sha /app/.git_sha
-
-# Copy entrypoints explicitly and install to /entrypoint.sh and /app/docker/entrypoints/rails.sh
-COPY docker/entrypoints /app/docker/entrypoints
+# Copy entrypoints explicitly and install to /entrypoint.sh (safe from volume mounts)
+COPY docker/entrypoints /chatwoot/docker/entrypoints
 COPY docker/entrypoints/rails.sh /entrypoint.sh
 
-RUN for f in /entrypoint.sh /app/docker/entrypoints/*.sh /app/docker/entrypoints/helpers/*; do \
+RUN for f in /entrypoint.sh /chatwoot/docker/entrypoints/*.sh /chatwoot/docker/entrypoints/helpers/*; do \
       tr -d '\r' < "$f" > "$f.clean" && mv "$f.clean" "$f"; \
     done && \
-    chmod +x /entrypoint.sh /app/docker/entrypoints/*.sh /app/docker/entrypoints/helpers/* && \
-    cp -f /entrypoint.sh /app/docker/entrypoints/rails.sh
+    chmod +x /entrypoint.sh /chatwoot/docker/entrypoints/*.sh /chatwoot/docker/entrypoints/helpers/*
 
-WORKDIR /app
+WORKDIR /chatwoot
 
 EXPOSE 3000
 
