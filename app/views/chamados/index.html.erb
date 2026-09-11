@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel & Gestão por Projeto, Suporte e Dev — 2026 | Lia chat</title>
+    <link rel="icon" type="image/svg+xml" href="/brand-assets/logo_thumbnail.svg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #060a12;
+            color: #f1f5f9;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        
+        @keyframes pulse-subtle {
+            0%, 100% { transform: scale(1); opacity: 1; border-color: rgba(244,63,94,0.9); }
+            50% { transform: scale(1.01); opacity: 0.95; border-color: rgba(244,63,94,0.5); }
+        }
+        .animate-pulse-subtle { animation: pulse-subtle 2.5s cubic-bezier(0.4,0,0.6,1) infinite; }
+        
+        @keyframes ticker-scroll {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-50%, 0, 0); }
+        }
+
+        .animate-ticker {
+            display: flex;
+            width: max-content;
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+            animation-name: ticker-scroll;
+            animation-timing-function: linear;
+            animation-iteration-count: infinite;
+        }
+        .animate-ticker:hover { animation-play-state: paused; }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(51,65,85,0.7);
+        }
+
+        body.mode-tv {
+            height: 100vh;
+            max-height: 100vh;
+            overflow: hidden !important;
+        }
+        body.mode-tv #panel-pc-graficos { display: none !important; }
+        body.mode-tv #split-manual-container { display: none !important; }
+        body.mode-tv #panel-tv-gargalos { display: flex !important; }
+
+        body.mode-pc {
+            height: auto;
+            overflow-y: auto !important;
+        }
+        body.mode-pc #panel-pc-graficos { display: grid !important; }
+        body.mode-pc #split-manual-container { display: grid !important; }
+        body.mode-tv #panel-tv-gargalos { display: none !important; }
+
+        select option {
+            background-color: #0f172a !important;
+            color: #f1f5f9 !important;
+        }
+    </style>
+</head>
+<body class="mode-tv p-3 md:p-5 min-h-screen flex flex-col justify-between">
+    
+    <div class="w-full max-w-[1900px] mx-auto space-y-4 flex-1 flex flex-col justify-between">
+
+        <!-- HEADER COM IDENTIDADE INFORGENESES / LIA CHAT -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-3.5 gap-4">
+            <div class="flex items-center gap-3.5">
+                <span class="w-4 h-10 bg-[#0026E6] rounded-md inline-block shrink-0 shadow-[0_0_20px_rgba(0,38,230,0.9)]"></span>
+                <div>
+                    <h1 class="text-xl md:text-2xl lg:text-3xl font-black tracking-tight text-white uppercase flex items-center gap-2">
+                        PAINEL DE GESTÃO GERAL DE CHAMADOS
+                    </h1>
+                    <p class="text-xs lg:text-sm text-slate-400 font-bold">Inforgeneses · Lia chat | Monitoramento Estratégico — 2026</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-between md:justify-end gap-3 flex-wrap">
+                <!-- BOTÃO COPIAR MENSAGEM WHATSAPP -->
+                <button onclick="copiarRelatorioWhatsApp()" class="flex items-center gap-2 bg-emerald-700/80 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-2xl text-xs font-black transition-all cursor-pointer shadow-lg border border-emerald-500/40">
+                    <i data-lucide="share-2" class="w-4 h-4"></i>
+                    <span id="btn-copy-text">COPIAR RESUMO WPP</span>
+                </button>
+
+                <!-- BOTÃO ATUALIZAR DADOS -->
+                <button onclick="carregarDados(true)" title="Recarregar dados agora" class="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-blue-400 border border-slate-700 px-3 py-1.5 rounded-2xl text-xs font-bold transition-all cursor-pointer">
+                    <i data-lucide="refresh-cw" id="icon-refresh" class="w-4 h-4"></i>
+                    <span id="status-refresh">Atualizar</span>
+                </button>
+
+                <!-- BOTÃO DO DRAWER DE FILTROS -->
+                <button onclick="toggleDrawer(true)" class="flex items-center gap-2.5 bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-emerald-500/50 px-4 py-2 rounded-2xl text-xs lg:text-sm font-black transition-all cursor-pointer shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+                    <i data-lucide="sliders-horizontal" class="w-5 h-5 text-emerald-400"></i>
+                    <span>FILTROS (<span id="filtros-count-badge">0</span>)</span>
+                </button>
+
+                <!-- CÓDIGO DO DIA (SERVIDOR) -->
+                <div class="bg-slate-950 px-4 py-1.5 rounded-2xl border-2 border-amber-500/60 text-center shadow-[0_0_20px_rgba(245,158,11,0.25)]">
+                    <div class="flex items-center justify-center gap-1.5">
+                        <i data-lucide="key" class="w-3.5 h-3.5 text-amber-400"></i>
+                        <span class="text-[9px] lg:text-[10px] text-amber-400 font-black tracking-widest uppercase">CÓDIGO DO DIA</span>
+                    </div>
+                    <div class="flex items-baseline justify-center gap-2">
+                        <span id="master-code-val" class="text-xl lg:text-2xl font-mono font-black text-amber-400 tracking-wider drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]">--</span>
+                        <span id="master-code-calc" class="text-xs font-mono font-bold text-slate-400">(--+--+--)</span>
+                    </div>
+                </div>
+
+                <!-- RELÓGIO -->
+                <div class="bg-slate-950 px-4 py-1.5 rounded-2xl border border-slate-800 text-right shadow-[0_0_20px_rgba(15,23,42,0.9)]">
+                    <span id="clock-time" class="text-xl lg:text-2xl font-mono font-black text-blue-400 block tracking-wider">00:00:00</span>
+                    <span id="clock-date" class="text-[9px] lg:text-[10px] text-slate-400 font-mono font-bold uppercase block tracking-widest">--/--/----</span>
+                </div>
+
+                <!-- BOTÃO MODO TV / PC -->
+                <button id="btn-mode-toggle" onclick="toggleMode()" class="flex items-center gap-2.5 bg-[#0026E6] hover:bg-blue-600 text-white px-4 py-2 rounded-2xl border border-blue-400/50 text-xs lg:text-sm font-black transition-all shadow-xl cursor-pointer">
+                    <i data-lucide="tv" id="mode-icon" class="w-5 h-5"></i>
+                    <span id="mode-text">MODO TV (43" ATIVO)</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- DRAWER MODAL RETRÁTIL DE FILTROS -->
+        <div id="drawer-filtros" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 hidden flex justify-end transition-all">
+            <div class="w-full max-w-[480px] bg-slate-900 h-full border-l border-slate-800 p-6 flex flex-col justify-between shadow-2xl overflow-y-auto custom-scrollbar">
+                <div class="space-y-5">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                        <div class="flex items-center gap-2.5">
+                            <i data-lucide="filter" class="w-6 h-6 text-emerald-400"></i>
+                            <h2 class="text-base font-black text-white uppercase tracking-wider">Painel de Seleção de Filtros</h2>
+                        </div>
+                        <button onclick="toggleDrawer(false)" class="text-slate-400 hover:text-white p-1 rounded-xl hover:bg-slate-800">
+                            <i data-lucide="x" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+
+                    <!-- BOTÕES RÁPIDOS -->
+                    <div class="flex items-center justify-between bg-slate-950 p-3 rounded-2xl border border-slate-800">
+                        <span class="text-xs text-slate-300 font-bold">Ações Rápidas:</span>
+                        <div class="flex gap-2">
+                            <button onclick="selecionarTudo(true)" class="text-xs bg-[#0026E6] hover:bg-blue-600 text-white font-black px-3 py-1.5 rounded-xl">Marcar Todos</button>
+                            <button onclick="selecionarTudo(false)" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 font-black px-3 py-1.5 rounded-xl">Desmarcar Todos</button>
+                        </div>
+                    </div>
+
+                    <!-- SELEÇÃO DE SUPORTES -->
+                    <div class="bg-slate-950/90 p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                            <span class="text-xs font-black text-cyan-400 uppercase tracking-wider">👤 Suportes Responsáveis</span>
+                            <span class="text-[10px] bg-cyan-950 text-cyan-300 px-2 py-0.5 rounded-lg border border-cyan-800 font-bold">Seleção</span>
+                        </div>
+                        <div id="check-suportes-container" class="space-y-2 max-h-[180px] overflow-y-auto custom-scrollbar pr-1"></div>
+                    </div>
+
+                    <!-- SELEÇÃO DE PROJETOS -->
+                    <div class="bg-slate-950/90 p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                        <span class="text-xs font-black text-amber-400 uppercase tracking-wider block border-b border-slate-800 pb-2">📁 Projetos / Módulos</span>
+                        <div id="check-projetos-container" class="space-y-2 max-h-[160px] overflow-y-auto custom-scrollbar pr-1"></div>
+                    </div>
+
+                    <!-- SELEÇÃO DE DEVS -->
+                    <div class="bg-slate-950/90 p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                        <span class="text-xs font-black text-emerald-400 uppercase tracking-wider block border-b border-slate-800 pb-2">💻 Devs Responsáveis</span>
+                        <div id="check-devs-container" class="space-y-2 max-h-[160px] overflow-y-auto custom-scrollbar pr-1"></div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-800">
+                    <button onclick="toggleDrawer(false)" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-2xl text-xs lg:text-sm uppercase tracking-wider transition-all shadow-xl">
+                        Aplicar Filtros e Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPIS -->
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <div class="glass-panel rounded-2xl p-4 flex items-center justify-between shadow-xl border-l-4 border-l-blue-500">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Geral no Banco</p>
+                    <h3 id="kpi-total" class="text-3xl lg:text-4xl font-black mt-1 text-white">--</h3>
+                </div>
+                <i data-lucide="layers" class="w-7 h-7 text-blue-400/90"></i>
+            </div>
+            <div class="glass-panel rounded-2xl p-4 flex items-center justify-between shadow-xl border-l-4 border-l-purple-500">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Projetos Ativos</p>
+                    <h3 id="kpi-projetos" class="text-3xl lg:text-4xl font-black mt-1 text-purple-400">--</h3>
+                </div>
+                <i data-lucide="folder-kanban" class="w-7 h-7 text-purple-400/90"></i>
+            </div>
+            <div class="glass-panel rounded-2xl p-4 flex items-center justify-between shadow-xl border-l-4 border-l-rose-500">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Críticos (>30 dias)</p>
+                    <h3 id="kpi-criticos" class="text-3xl lg:text-4xl font-black mt-1 text-rose-400">--</h3>
+                </div>
+                <i data-lucide="shield-alert" class="w-7 h-7 text-rose-400/90"></i>
+            </div>
+            <div class="glass-panel rounded-2xl p-4 flex items-center justify-between shadow-lg border-l-4 border-l-emerald-500">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Exibindo na Tela</p>
+                    <h3 id="kpi-filtrados" class="text-3xl lg:text-4xl font-black mt-1 text-emerald-400">--</h3>
+                </div>
+                <i data-lucide="filter" class="w-7 h-7 text-emerald-400/90"></i>
+            </div>
+        </section>
+
+        <!-- MODO TV: TOP 5 MAIS ATRASADOS (>30 DIAS) -->
+        <section id="panel-tv-gargalos" class="bg-rose-950/30 border-2 border-rose-900/70 rounded-3xl p-4.5 flex-1 flex flex-col justify-between shadow-2xl space-y-3">
+            <div class="flex items-center justify-between border-b border-rose-900/50 pb-2">
+                <div class="flex items-center gap-2.5">
+                    <span class="flex h-3 w-3 relative">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+                    </span>
+                    <h2 class="text-sm lg:text-base font-black text-rose-400 uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="flame" class="w-5 h-5"></i> Alerta de Crise: Top 5 Chamados Mais Atrasados (>30 Dias)
+                    </h2>
+                </div>
+                <span class="text-xs text-slate-400 font-black uppercase tracking-widest">Gargalos Crônicos</span>
+            </div>
+
+            <!-- GRID DOS CARDS DO TOP 5 -->
+            <div id="top-gargalos-container" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 flex-1 min-h-0">
+                <p class="text-sm text-slate-400 col-span-5 py-6 text-center">Carregando chamados...</p>
+            </div>
+        </section>
+
+        <!-- MODO PC: SEÇÃO DE GRÁFICOS CHART.JS -->
+        <section id="panel-pc-graficos" class="hidden grid-cols-12 gap-4 flex-1 min-h-0">
+            <!-- GRÁFICO DE PROJETOS -->
+            <div class="glass-panel rounded-3xl p-4.5 shadow-xl col-span-12 lg:col-span-7 flex flex-col justify-between h-full">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+                    <h2 class="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="bar-chart-3" class="w-5 h-5 text-blue-400"></i> Volume por Projeto / Módulo
+                    </h2>
+                    <span class="text-xs text-slate-400 font-bold uppercase">Visão Modo PC</span>
+                </div>
+                <div class="flex-1 w-full min-h-[220px] relative">
+                    <canvas id="chartProjetos"></canvas>
+                </div>
+            </div>
+
+            <!-- CARGA DO SQUAD -->
+            <div class="glass-panel rounded-3xl p-4.5 shadow-xl col-span-12 lg:col-span-5 flex flex-col justify-between h-full">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+                    <h2 class="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="users" class="w-5 h-5 text-emerald-400"></i> Carga do Squad Filtrado
+                    </h2>
+                    <span class="text-xs text-slate-400 font-bold uppercase">Volume de Atendimentos</span>
+                </div>
+                <div id="team-load-container" class="space-y-2 overflow-y-auto custom-scrollbar flex-1 pr-1"></div>
+            </div>
+        </section>
+
+        <!-- TICKER HORIZONTAL EM LOOP -->
+        <section id="panel-ticker-tv" class="glass-panel rounded-3xl p-3 shadow-2xl border-blue-500/40 overflow-hidden flex flex-col space-y-2">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 px-1">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="activity" class="w-4 h-4 text-blue-400 animate-pulse"></i>
+                    <h2 class="text-xs lg:text-sm font-black text-white uppercase tracking-wider">
+                        Fila de Chamados Selecionados (Loop Contínuo)
+                    </h2>
+                </div>
+                <span class="text-[10px] font-mono font-bold text-slate-400">Inforgeneses · Alta Performance</span>
+            </div>
+            <div class="overflow-hidden w-full py-1">
+                <div id="ticker-content" class="animate-ticker space-x-4">
+                    <span class="text-xs text-slate-400 p-2">Carregando fila contínua...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- MODO PC: TABELA DETALHADA -->
+        <div id="split-manual-container" class="hidden grid-cols-12 gap-4">
+            <section class="glass-panel rounded-3xl shadow-xl col-span-12 flex flex-col h-[500px] overflow-hidden">
+                <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+                    <h2 class="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="list-todo" class="text-amber-400 w-5 h-5"></i> Fila de Chamados Detalhada (Modo PC)
+                    </h2>
+                    <input type="text" id="filtro-busca" oninput="filtrar()" placeholder="Pesquisar protocolo, assunto ou instituição..." class="bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 w-72" />
+                </div>
+                
+                <div class="overflow-y-auto custom-scrollbar flex-1">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
+                        <thead class="bg-slate-950 text-slate-400 text-[11px] uppercase font-black sticky top-0 z-10 border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">Atraso</th>
+                                <th class="p-3">Nº Chamado</th>
+                                <th class="p-3">Projeto / Módulo</th>
+                                <th class="p-3">Assunto</th>
+                                <th class="p-3">Instituição</th>
+                                <th class="p-3">Suporte</th>
+                                <th class="p-3">Dev Interno</th>
+                                <th class="p-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-chamados" class="divide-y divide-slate-800/60 font-medium">
+                            <tr><td colspan="8" class="text-center py-6 text-slate-500">Carregando dados...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        var serverTimestamp = Date.now();
+        var startPerfTime = performance.now();
+        var todosChamados = [];
+        var isTVMode = true;
+        var chartInstance = null;
+
+        function atualizarRelogioECodigo() {
+            var elapsedMs = performance.now() - startPerfTime;
+            var now = new Date(serverTimestamp + elapsedMs);
+
+            document.getElementById('clock-time').innerText = now.toLocaleTimeString('pt-BR');
+            document.getElementById('clock-date').innerText = now.toLocaleDateString('pt-BR');
+
+            var dia = now.getDate();
+            var mes = now.getMonth() + 1;
+            var ano2 = parseInt(now.getFullYear().toString().slice(-2), 10);
+            var codigoSoma = dia + mes + ano2;
+
+            document.getElementById('master-code-val').innerText = codigoSoma;
+            document.getElementById('master-code-calc').innerText = `(${dia} + ${mes} + ${ano2})`;
+        }
+        setInterval(atualizarRelogioECodigo, 1000);
+        atualizarRelogioECodigo();
+
+        function carregarDados(forcar) {
+            var icon = document.getElementById('icon-refresh');
+            var status = document.getElementById('status-refresh');
+            if (icon) icon.classList.add('animate-spin');
+            if (status) status.innerText = 'Carregando...';
+
+            var url = '/chamados/data' + (forcar ? '?refresh=true' : '');
+            fetch(url)
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.timestamp) {
+                        serverTimestamp = data.timestamp;
+                        startPerfTime = performance.now();
+                    }
+                    todosChamados = data.lista_chamados || [];
+                    popularCheckboxes(todosChamados);
+                    filtrar();
+                    if (icon) icon.classList.remove('animate-spin');
+                    if (status) status.innerText = 'Atualizado';
+                })
+                .catch(function(err) {
+                    console.error('Erro ao carregar chamados:', err);
+                    if (icon) icon.classList.remove('animate-spin');
+                    if (status) status.innerText = 'Erro';
+                });
+        }
+
+        function toggleDrawer(abrir) {
+            var drawer = document.getElementById('drawer-filtros');
+            if (abrir) {
+                drawer.classList.remove('hidden');
+            } else {
+                drawer.classList.add('hidden');
+            }
+        }
+
+        function toggleMode() {
+            isTVMode = !isTVMode;
+            var body = document.body;
+            var btnText = document.getElementById('mode-text');
+
+            if (isTVMode) {
+                body.classList.remove('mode-pc');
+                body.classList.add('mode-tv');
+                btnText.innerText = 'MODO TV (43" ATIVO)';
+            } else {
+                body.classList.remove('mode-tv');
+                body.classList.add('mode-pc');
+                btnText.innerText = 'MODO PC (INTERATIVO)';
+            }
+            filtrar();
+        }
+
+        function popularCheckboxes(chamados) {
+            var projetos = {}, suportes = {}, devs = {};
+            
+            for (var i = 0; i < chamados.length; i++) {
+                var c = chamados[i];
+                var proj = c.Projeto_Modulo || c.Finalidade_Modulo || 'Geral';
+                var sup = c.Responsavel || c.Suporte || c.Criador || 'Sem Responsável';
+                var dev = c.Resp_interno || c.Dev_Interno || 'Sem Dev';
+
+                projetos[proj] = true;
+                suportes[sup] = true;
+                devs[dev] = true;
+            }
+
+            renderContainerCheckboxes('check-suportes-container', Object.keys(suportes).sort(), 'sup', true);
+            renderContainerCheckboxes('check-projetos-container', Object.keys(projetos).sort(), 'proj', false);
+            renderContainerCheckboxes('check-devs-container', Object.keys(devs).sort(), 'dev', false);
+        }
+
+        function renderContainerCheckboxes(containerId, lista, prefixo, ehSuporte) {
+            var container = document.getElementById(containerId);
+            if (!container) return;
+            var html = '';
+            lista.forEach(function(item, idx) {
+                var idCheck = `${prefixo}_${idx}`;
+                var isChecked = true;
+
+                html += `
+                    <label class="flex items-center gap-2.5 text-xs lg:text-sm text-slate-200 cursor-pointer hover:text-white select-none">
+                        <input type="checkbox" id="${idCheck}" value="${item}" ${isChecked ? 'checked' : ''} onchange="filtrar()" class="rounded bg-slate-900 border-slate-700 text-blue-600 focus:ring-0 w-4 h-4 cursor-pointer">
+                        <span class="truncate font-medium" title="${item}">${item}</span>
+                    </label>
+                `;
+            });
+            container.innerHTML = html || '<span class="text-xs text-slate-500">Nenhum item</span>';
+        }
+
+        function selecionarTudo(marcar) {
+            var inputs = document.querySelectorAll('#drawer-filtros input[type="checkbox"]');
+            inputs.forEach(function(i) { i.checked = marcar; });
+            filtrar();
+        }
+
+        function obterValoresMarcados(containerId) {
+            var checks = document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`);
+            var valores = [];
+            checks.forEach(function(c) { valores.push(c.value); });
+            return valores;
+        }
+
+        function filtrar() {
+            var buscaEl = document.getElementById('filtro-busca');
+            var busca = buscaEl ? buscaEl.value.toUpperCase().trim() : '';
+            var projetosMarcados = obterValoresMarcados('check-projetos-container');
+            var suportesMarcados = obterValoresMarcados('check-suportes-container');
+            var devsMarcados = obterValoresMarcados('check-devs-container');
+
+            var badge = document.getElementById('filtros-count-badge');
+            if (badge) badge.innerText = suportesMarcados.length;
+
+            var resultado = [];
+
+            for (var i = 0; i < todosChamados.length; i++) {
+                var c = todosChamados[i];
+                var proj = c.Projeto_Modulo || c.Finalidade_Modulo || 'Geral';
+                var sup = c.Responsavel || c.Suporte || c.Criador || 'Sem Responsável';
+                var dev = c.Resp_interno || c.Dev_Interno || 'Sem Dev';
+
+                var texto = ((c.Assunto || '') + ' ' + (c.Protocolo_Data || '') + ' ' + (c.Instituicao || '')).toUpperCase();
+                if (busca && texto.indexOf(busca) === -1) continue;
+
+                if (projetosMarcados.length > 0 && !projetosMarcados.includes(proj)) continue;
+                if (suportesMarcados.length > 0 && !suportesMarcados.includes(sup)) continue;
+                if (devsMarcados.length > 0 && !devsMarcados.includes(dev)) continue;
+
+                resultado.push(c);
+            }
+
+            renderDashboard(resultado);
+        }
+
+        function renderDashboard(chamados) {
+            if (!chamados) chamados = [];
+
+            var criticos = 0, projMetrics = {}, projSet = {};
+            for (var i = 0; i < chamados.length; i++) {
+                var ch = chamados[i];
+                var diasAt = Number(ch.Dias_Atraso) || 0;
+                var mod = ch.Projeto_Modulo || ch.Finalidade_Modulo || 'Geral';
+
+                projMetrics[mod] = (projMetrics[mod] || 0) + 1;
+                projSet[mod] = true;
+
+                if (diasAt > 30) criticos++;
+            }
+
+            document.getElementById('kpi-total').innerText = todosChamados.length;
+            document.getElementById('kpi-filtrados').innerText = chamados.length;
+            document.getElementById('kpi-criticos').innerText = criticos;
+            document.getElementById('kpi-projetos').innerText = Object.keys(projSet).length;
+
+            var ordenados = chamados.slice().sort(function(a, b) {
+                return (Number(b.Dias_Atraso) || 0) - (Number(a.Dias_Atraso) || 0);
+            });
+
+            renderTop5Gargalos(chamados);
+
+            if (!isTVMode) {
+                renderChart(projMetrics);
+                renderSquadLoad(chamados);
+            }
+
+            // TICKER
+            var tickerContainer = document.getElementById('ticker-content');
+            if (ordenados.length === 0) {
+                tickerContainer.innerHTML = '<span class="text-sm text-emerald-400 font-bold p-3">Nenhum chamado pendente para a seleção ativa.</span>';
+                tickerContainer.style.animationDuration = '0s';
+            } else {
+                var listaLoop = ordenados.concat(ordenados);
+                var tCardH = '';
+                var duracaoSegundos = Math.max(ordenados.length * 9, 45);
+                tickerContainer.style.animationDuration = duracaoSegundos + 's';
+
+                for (var tk = 0; tk < listaLoop.length; tk++) {
+                    var itemTk = listaLoop[tk];
+                    var protoTk = itemTk.Protocolo_Data ? itemTk.Protocolo_Data.split(' ')[0] : (itemTk.num_chamado || 'N/A');
+                    var atrasoTk = Number(itemTk.Dias_Atraso) || 0;
+                    var badgeCor = atrasoTk > 30 ? 'border-rose-500/70 bg-rose-950/50' : 'border-slate-800 bg-slate-900/90';
+
+                    tCardH += `
+                        <div class="min-w-[360px] max-w-[360px] ${badgeCor} border-2 p-3.5 rounded-2xl flex flex-col justify-between shadow-xl shrink-0">
+                            <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-1.5">
+                                <span class="font-mono text-base font-black text-blue-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-700 shadow-inner">
+                                    ${protoTk}
+                                </span>
+                                <span class="font-mono font-black text-sm ${atrasoTk > 30 ? 'text-rose-400' : 'text-amber-400'}">
+                                    ⏳ ${atrasoTk}d
+                                </span>
+                            </div>
+                            
+                            <p class="text-xs lg:text-sm font-bold text-slate-100 truncate mb-1" title="${itemTk.Assunto}">${itemTk.Assunto || 'Sem assunto'}</p>
+                            <span class="text-xs text-amber-400 font-mono font-bold block mb-2">${itemTk.Projeto_Modulo || itemTk.Finalidade_Modulo || 'Geral'}</span>
+                            
+                            <div class="bg-slate-950/90 p-2 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
+                                <div>
+                                    <span class="text-slate-400 block font-bold text-[10px]">Suporte:</span>
+                                    <span class="text-cyan-300 font-black truncate block max-w-[125px]">${itemTk.Responsavel || itemTk.Suporte || 'Sem dono'}</span>
+                                </div>
+                                <div class="text-right border-l border-slate-800 pl-2.5">
+                                    <span class="text-slate-400 block font-bold text-[10px]">Dev:</span>
+                                    <span class="text-emerald-400 font-black truncate block max-w-[125px]">${itemTk.Resp_interno || itemTk.Dev_Interno || 'Sem dev'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                tickerContainer.innerHTML = tCardH;
+            }
+
+            // TABELA
+            var tabela = document.getElementById('tabela-chamados');
+            if (tabela) {
+                var rH = '';
+                for (var r = 0; r < ordenados.length; r++) {
+                    var c = ordenados[r];
+                    var diasRow = Number(c.Dias_Atraso) || 0;
+                    var aC = diasRow > 30 ? 'text-rose-400 font-black' : diasRow > 15 ? 'text-amber-400 font-bold' : 'text-slate-300';
+                    var proto = c.Protocolo_Data ? c.Protocolo_Data.split(' ')[0] : (c.num_chamado || 'N/A');
+
+                    rH += `
+                        <tr class="hover:bg-slate-800/50 transition-colors">
+                            <td class="p-3 text-sm font-mono ${aC}">${diasRow}d</td>
+                            <td class="p-3">
+                                <span class="font-mono text-sm font-black text-blue-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 inline-block">
+                                    ${proto}
+                                </span>
+                            </td>
+                            <td class="p-3 text-xs text-amber-300 font-bold max-w-[140px] truncate">${c.Projeto_Modulo || c.Finalidade_Modulo || '-'}</td>
+                            <td class="p-3 text-xs text-slate-200 max-w-[220px] truncate" title="${c.Assunto}">${c.Assunto || '-'}</td>
+                            <td class="p-3 text-xs text-white max-w-[160px] truncate">${c.Instituicao || '-'}</td>
+                            <td class="p-3 text-xs text-cyan-300 font-bold">${c.Responsavel || c.Suporte || '-'}</td>
+                            <td class="p-3 text-xs text-emerald-400 font-bold">${c.Resp_interno || c.Dev_Interno || '-'}</td>
+                            <td class="p-3 text-[10px]"><span class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-slate-300">${c.Status_Atual || 'Ativo'}</span></td>
+                        </tr>
+                    `;
+                }
+                tabela.innerHTML = rH || '<tr><td colspan="8" class="text-center py-6 text-slate-500">Nenhum chamado encontrado.</td></tr>';
+            }
+            lucide.createIcons();
+        }
+
+        function renderTop5Gargalos(chamados) {
+            var gContainer = document.getElementById('top-gargalos-container');
+            if (!gContainer) return;
+
+            var criticosOver30 = chamados.filter(function(c) { return (Number(c.Dias_Atraso) || 0) > 30; });
+            var top5 = criticosOver30.sort(function(a, b) {
+                return (Number(b.Dias_Atraso) || 0) - (Number(a.Dias_Atraso) || 0);
+            }).slice(0, 5);
+
+            if (top5.length === 0) {
+                gContainer.innerHTML = '<p class="text-sm text-emerald-400 font-bold col-span-5 py-6 text-center">Nenhum chamado crítico (>30 dias de atraso) para esta seleção!</p>';
+            } else {
+                var gH = '';
+                for (var g = 0; g < top5.length; g++) {
+                    var gc = top5[g];
+                    var proto = gc.Protocolo_Data ? gc.Protocolo_Data.split(' ')[0] : (gc.num_chamado || 'N/A');
+                    var diasCard = Number(gc.Dias_Atraso) || 0;
+                    
+                    gH += `
+                        <div class="bg-rose-950/50 border-2 border-rose-600 rounded-2xl p-4 flex flex-col justify-between shadow-2xl animate-pulse-subtle h-full">
+                            <div class="flex items-center justify-between border-b border-rose-900/60 pb-2 mb-1.5">
+                                <span class="text-xs font-black text-rose-300 uppercase tracking-widest flex items-center gap-1">
+                                    <span class="bg-rose-600 text-white px-2 py-0.5 rounded-lg text-xs font-black">#${g + 1} CRÍTICO</span>
+                                </span>
+                                <span class="text-rose-400 font-black font-mono text-lg flex items-center gap-1">
+                                    <i data-lucide="stopwatch" class="w-4 h-4"></i> ${diasCard}d
+                                </span>
+                            </div>
+
+                            <div class="my-2 text-center bg-slate-950 py-2 px-1 rounded-2xl border border-blue-500/50 shadow-[inset_0_0_15px_rgba(59,130,246,0.3)]">
+                                <span class="text-[10px] text-slate-400 font-mono block font-bold uppercase tracking-wider mb-0.5">PROTOCOLO</span>
+                                <span class="text-xl lg:text-2xl font-mono font-black text-blue-400 tracking-wider drop-shadow-[0_0_10px_rgba(96,165,250,0.7)]">${proto}</span>
+                            </div>
+                            
+                            <p class="text-xs lg:text-sm font-extrabold text-white leading-snug my-2 line-clamp-2" title="${gc.Assunto}">${gc.Assunto || 'Sem assunto'}</p>
+                            
+                            <div class="bg-slate-950/95 p-2.5 rounded-xl border border-slate-800 space-y-1.5 text-xs mt-auto">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-400 font-bold">Módulo:</span>
+                                    <span class="text-amber-300 font-black truncate max-w-[130px]">${gc.Projeto_Modulo || gc.Finalidade_Modulo || 'Não informado'}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-400 font-bold">Suporte:</span>
+                                    <span class="text-cyan-300 font-black truncate max-w-[130px]">${gc.Responsavel || gc.Suporte || 'Sem dono'}</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-400 font-bold">Dev:</span>
+                                    <span class="text-emerald-400 font-black truncate max-w-[130px]">${gc.Resp_interno || gc.Dev_Interno || 'Sem dev'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                gContainer.innerHTML = gH;
+            }
+        }
+
+        function renderSquadLoad(chamados) {
+            var container = document.getElementById('team-load-container');
+            if (!container) return;
+
+            var contPessoas = {};
+            chamados.forEach(function(c) {
+                var sup = c.Responsavel || c.Suporte || c.Criador || 'Sem Responsável';
+                var dev = c.Resp_interno || c.Dev_Interno || 'Sem Dev';
+                contPessoas[sup] = (contPessoas[sup] || 0) + 1;
+                if (dev !== sup && dev !== 'Sem Dev') {
+                    contPessoas[dev] = (contPessoas[dev] || 0) + 1;
+                }
+            });
+
+            var arr = Object.entries(contPessoas).sort(function(a, b) { return b[1] - a[1]; });
+            var maxL = arr.length > 0 ? arr[0][1] : 1;
+
+            var h = '';
+            arr.forEach(function(item) {
+                var nome = item[0], qt = item[1];
+                var pc = Math.round((qt / maxL) * 100);
+                var barColor = qt >= 5 ? 'bg-rose-500' : 'bg-emerald-500';
+                h += `
+                    <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 shadow-md">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs font-bold text-slate-200 truncate max-w-[180px]">${nome}</span>
+                            <span class="text-xs font-black text-white bg-slate-950 px-2 py-0.5 rounded border border-slate-800">${qt} chamados</span>
+                        </div>
+                        <div class="w-full bg-slate-950 rounded-full h-2">
+                            <div class="${barColor} h-2 rounded-full transition-all duration-500" style="width: ${pc}%;"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = h || '<p class="text-xs text-slate-500 p-2">Nenhum responsável atribuído.</p>';
+        }
+
+        function renderChart(metrics) {
+            var canvas = document.getElementById('chartProjetos');
+            if (!canvas) return;
+            var ctx = canvas.getContext('2d');
+            var sortedMetrics = Object.entries(metrics).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 7);
+            var labels = sortedMetrics.map(function(m) { return m[0]; });
+            var dataValues = sortedMetrics.map(function(m) { return m[1]; });
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Chamados',
+                            data: dataValues,
+                            backgroundColor: 'rgba(0, 38, 230, 0.75)',
+                            borderColor: '#0026E6',
+                            borderWidth: 1,
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#f1f5f9', font: { weight: 'bold', size: 11 } }, grid: { display: false } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(51, 65, 85, 0.3)' } }
+                    }
+                }
+            });
+        }
+
+        function copiarRelatorioWhatsApp() {
+            var agrupadoProjeto = {};
+            todosChamados.forEach(function(c) {
+                if (!c.Protocolo_Data && !c.num_chamado && !c.Assunto) return;
+                var projeto = (c.Finalidade_Modulo || c.Projeto_Modulo || "Geral").trim();
+                var suporte = (c.Responsavel || c.Suporte || c.Criador || "Sem Responsável").trim();
+                var dev = (c.Resp_interno || c.Dev_Interno || "Sem Dev").trim();
+                var proto = c.Protocolo_Data ? c.Protocolo_Data.split(" ")[0].trim() : String(c.num_chamado || 'N/A').trim();
+                var dias = Number(c.Dias_Atraso) || 0;
+                var titulo = c.Assunto ? String(c.Assunto).split("\n")[0].trim() : "Sem assunto";
+
+                if (!agrupadoProjeto[projeto]) agrupadoProjeto[projeto] = [];
+                agrupadoProjeto[projeto].push({ proto: proto, titulo: titulo, suporte: suporte, dev: dev, dias: dias });
+            });
+
+            var mensagem = "📊 *Relatório Operacional por Projeto — 2026*\n───────────────────────────\n\n";
+            var projetos = Object.keys(agrupadoProjeto).sort();
+            if (projetos.length === 0) {
+                mensagem += "✅ *Nenhum chamado pendente na fila no momento.*";
+            } else {
+                projetos.forEach(function(proj, idx) {
+                    var lista = agrupadoProjeto[proj].sort(function(a, b) { return b.dias - a.dias; });
+                    mensagem += `📁 *PROJETO: ${proj.toUpperCase()}* (${lista.length} chamados)\n`;
+                    lista.forEach(function(ch) {
+                        mensagem += `🔹 *${ch.proto}* - ${ch.titulo} (⏳ *${ch.dias}d*) _(Sup: ${ch.suporte} | Dev: ${ch.dev})_\n`;
+                    });
+                    if (idx < projetos.length - 1) mensagem += "\n┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n\n";
+                });
+                mensagem += "\n───────────────────────────\n🚀 _Foco na resolução dos chamados pendentes!_";
+            }
+
+            navigator.clipboard.writeText(mensagem).then(function() {
+                var btn = document.getElementById('btn-copy-text');
+                if (btn) {
+                    btn.innerText = 'COPIADO!';
+                    setTimeout(function() { btn.innerText = 'COPIAR RESUMO WPP'; }, 2500);
+                }
+            });
+        }
+
+        // Auto-refresh a cada 2 minutos
+        setInterval(function() { carregarDados(false); }, 120000);
+
+        // Inicialização
+        carregarDados(false);
+    </script>
+</body>
+</html>

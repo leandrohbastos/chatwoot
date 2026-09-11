@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-900 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lia Chat - Widget de Chamados</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#0026E6',
+              600: '#001fc2',
+              700: '#00189c'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar for compact iframe */
+    ::-webkit-scrollbar {
+      width: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body class="h-full font-sans antialiased text-xs flex flex-col p-3 bg-slate-950 text-slate-200 select-none">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+    <div class="flex items-center space-x-2">
+      <div class="w-6 h-6 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+        <i class="fa-solid fa-ticket"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-slate-100 leading-tight">Chamados do Cliente</h1>
+        <span id="detectedContext" class="text-[10px] text-slate-400 block truncate max-w-[170px]">Detectando conversa...</span>
+      </div>
+    </div>
+    <div class="flex items-center space-x-1">
+      <button id="btnRefresh" title="Atualizar dados" class="p-1.5 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition">
+        <i class="fa-solid fa-rotate text-xs"></i>
+      </button>
+      <a href="/chamados" target="_blank" title="Abrir painel completo" class="p-1.5 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition">
+        <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+      </a>
+    </div>
+  </div>
+
+  <!-- Search / Filter Input -->
+  <div class="mb-2 space-y-1.5">
+    <div class="relative">
+      <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-500 text-[11px]"></i>
+      <input type="text" id="searchInput" placeholder="Buscar por instituição, protocolo ou assunto..." 
+        class="w-full pl-7 pr-7 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition">
+      <button id="btnClearSearch" class="hidden absolute right-2.5 top-2 text-slate-500 hover:text-slate-300">
+        <i class="fa-solid fa-xmark text-xs"></i>
+      </button>
+    </div>
+    <div class="flex items-center justify-between text-[10px] text-slate-400 px-1">
+      <span id="statsLabel">Carregando chamados...</span>
+      <span id="lastUpdateLabel" class="text-slate-500"></span>
+    </div>
+  </div>
+
+  <!-- Summary KPI Badges -->
+  <div class="grid grid-cols-3 gap-1.5 mb-2">
+    <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-1.5 text-center">
+      <div class="text-[9px] text-slate-400 font-medium">TOTAL</div>
+      <div id="kpiTotal" class="text-sm font-bold text-slate-200 mt-0.5">0</div>
+    </div>
+    <div class="bg-amber-950/20 border border-amber-900/30 rounded-lg p-1.5 text-center">
+      <div class="text-[9px] text-amber-400 font-medium">&gt; 10 DIAS</div>
+      <div id="kpiDelay10" class="text-sm font-bold text-amber-400 mt-0.5">0</div>
+    </div>
+    <div class="bg-rose-950/20 border border-rose-900/30 rounded-lg p-1.5 text-center">
+      <div class="text-[9px] text-rose-400 font-medium">&gt; 30 DIAS</div>
+      <div id="kpiDelay30" class="text-sm font-bold text-rose-400 mt-0.5">0</div>
+    </div>
+  </div>
+
+  <!-- Action: Copy WhatsApp Summary Button -->
+  <button id="btnCopyWhatsApp" class="w-full mb-2.5 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg shadow-sm flex items-center justify-center space-x-2 transition active:scale-[0.98]">
+    <i class="fa-brands fa-whatsapp text-sm"></i>
+    <span id="btnCopyText">Copiar Resumo para WhatsApp</span>
+  </button>
+
+  <!-- Tickets List -->
+  <div id="ticketsContainer" class="flex-1 overflow-y-auto space-y-2 pr-0.5 min-h-[150px]">
+    <!-- Loading skeleton -->
+    <div class="space-y-2 animate-pulse" id="skeletonLoader">
+      <div class="h-20 bg-slate-900 rounded-lg border border-slate-800/80"></div>
+      <div class="h-20 bg-slate-900 rounded-lg border border-slate-800/80"></div>
+      <div class="h-20 bg-slate-900 rounded-lg border border-slate-800/80"></div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let allTickets = [];
+    let currentContact = null;
+    let currentConversation = null;
+    let detectedSearchTerm = '';
+
+    const container = document.getElementById('ticketsContainer');
+    const skeleton = document.getElementById('skeletonLoader');
+    const searchInput = document.getElementById('searchInput');
+    const btnClearSearch = document.getElementById('btnClearSearch');
+    const detectedContext = document.getElementById('detectedContext');
+    const statsLabel = document.getElementById('statsLabel');
+    const lastUpdateLabel = document.getElementById('lastUpdateLabel');
+    const kpiTotal = document.getElementById('kpiTotal');
+    const kpiDelay10 = document.getElementById('kpiDelay10');
+    const kpiDelay30 = document.getElementById('kpiDelay30');
+    const btnCopyWhatsApp = document.getElementById('btnCopyWhatsApp');
+    const btnCopyText = document.getElementById('btnCopyText');
+    const btnRefresh = document.getElementById('btnRefresh');
+
+    // Setup Chatwoot Dashboard App postMessage listener
+    window.addEventListener('message', function (event) {
+      if (!event.data) return;
+      let data = event.data;
+      if (typeof data === 'string') {
+        try {
+          data = JSON.parse(data);
+        } catch (e) {
+          return;
+        }
+      }
+
+      if (data.event === 'appContext') {
+        handleAppContext(data.data);
+      }
+    });
+
+    // Request Chatwoot App Context on mount
+    function requestAppContext() {
+      try {
+        window.parent.postMessage('chatwoot-dashboard-app:fetch-info', '*');
+      } catch (e) {
+        console.warn('Could not postMessage to parent:', e);
+      }
+    }
+
+    function handleAppContext(ctx) {
+      if (!ctx) return;
+      currentContact = ctx.contact || null;
+      currentConversation = ctx.conversation || null;
+
+      let term = '';
+      if (currentContact) {
+        // Check custom attributes, company or contact name
+        const custom = currentContact.custom_attributes || {};
+        const additional = currentContact.additional_attributes || {};
+
+        term = custom.instituicao || 
+               custom.empresa || 
+               custom.cidade || 
+               additional.company_name || 
+               currentContact.name || '';
+      }
+
+      if (term) {
+        detectedSearchTerm = term.trim();
+        detectedContext.textContent = `Filtro: ${detectedSearchTerm}`;
+        detectedContext.title = detectedSearchTerm;
+        if (!searchInput.value) {
+          searchInput.value = detectedSearchTerm;
+          btnClearSearch.classList.remove('hidden');
+        }
+      } else {
+        detectedContext.textContent = 'Nenhum cliente detectado';
+      }
+
+      filterAndRender();
+    }
+
+    // Fetch Tickets
+    async function loadTickets(forceRefresh = false) {
+      statsLabel.textContent = 'Carregando...';
+      try {
+        const url = `/chamados/data${forceRefresh ? '?refresh=true' : ''}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        allTickets = Array.isArray(data) ? data : (data.lista_chamados || data.tickets || []);
+        
+        lastUpdateLabel.textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        filterAndRender();
+      } catch (err) {
+        console.error('Erro ao buscar chamados:', err);
+        statsLabel.textContent = 'Erro ao carregar dados';
+        container.innerHTML = `
+          <div class="text-center py-8 text-slate-400">
+            <i class="fa-solid fa-triangle-exclamation text-rose-500 text-lg mb-2"></i>
+            <p class="text-xs">Não foi possível carregar os chamados.</p>
+            <button onclick="loadTickets(true)" class="mt-2 text-[11px] text-blue-400 underline">Tentar novamente</button>
+          </div>
+        `;
+      }
+    }
+
+    function getFilteredTickets() {
+      const q = (searchInput.value || '').trim().toLowerCase();
+      if (!q) return allTickets;
+
+      return allTickets.filter(t => {
+        const inst = (t.Instituicao || '').toLowerCase();
+        const cid = (t.Cidade || '').toLowerCase();
+        const ass = (t.Assunto || '').toLowerCase();
+        const mod = (t.Finalidade_Modulo || '').toLowerCase();
+        const prot = (t.Protocolo_Data || '').toLowerCase();
+        const resp = (t.Responsavel || '').toLowerCase();
+
+        return inst.includes(q) || 
+               cid.includes(q) || 
+               ass.includes(q) || 
+               mod.includes(q) || 
+               prot.includes(q) ||
+               resp.includes(q);
+      });
+    }
+
+    function filterAndRender() {
+      const filtered = getFilteredTickets();
+      
+      // Update KPIs
+      kpiTotal.textContent = filtered.length;
+      kpiDelay10.textContent = filtered.filter(t => (t.Dias_Atraso || 0) > 10).length;
+      kpiDelay30.textContent = filtered.filter(t => (t.Dias_Atraso || 0) > 30).length;
+
+      statsLabel.textContent = `${filtered.length} chamado${filtered.length === 1 ? '' : 's'}`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-slate-500">
+            <i class="fa-solid fa-circle-check text-emerald-500/80 text-xl mb-2"></i>
+            <p class="font-medium text-slate-300">Nenhum chamado pendente</p>
+            <p class="text-[10px] text-slate-500 mt-0.5">${searchInput.value ? 'Para os termos da busca atual' : 'Todos os chamados resolvidos'}</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Sort by Dias_Atraso descending
+      const sorted = [...filtered].sort((a, b) => (b.Dias_Atraso || 0) - (a.Dias_Atraso || 0));
+
+      container.innerHTML = sorted.map(t => {
+        const delay = t.Dias_Atraso || 0;
+        let badgeClass = "bg-emerald-950/40 text-emerald-400 border border-emerald-800/40";
+        let delayClass = "text-emerald-400";
+        if (delay > 30) {
+          badgeClass = "bg-rose-950/60 text-rose-300 border border-rose-800/60";
+          delayClass = "text-rose-400 font-bold";
+        } else if (delay > 10) {
+          badgeClass = "bg-amber-950/60 text-amber-300 border border-amber-800/60";
+          delayClass = "text-amber-400 font-bold";
+        }
+
+        return `
+          <div class="bg-slate-900 border border-slate-800/90 rounded-lg p-2.5 hover:border-slate-700 transition">
+            <div class="flex items-start justify-between gap-2 mb-1.5">
+              <div class="font-bold text-slate-200 truncate flex-1" title="${t.Protocolo_Data}">
+                <i class="fa-solid fa-hashtag text-slate-500 text-[10px]"></i> ${t.Protocolo_Data}
+              </div>
+              <span class="px-1.5 py-0.5 rounded text-[10px] ${badgeClass} shrink-0">
+                ⏳ ${delay}d atraso
+              </span>
+            </div>
+
+            <p class="text-[11px] text-slate-300 font-medium line-clamp-2 mb-2" title="${t.Assunto}">
+              ${t.Assunto}
+            </p>
+
+            <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400 border-t border-slate-800/60 pt-1.5">
+              <span class="truncate max-w-[130px] bg-slate-800/80 px-1.5 py-0.5 rounded text-slate-300" title="${t.Instituicao || 'Não informada'}">
+                🏢 ${t.Instituicao || 'Não informada'}
+              </span>
+              <span class="truncate max-w-[110px] bg-slate-800/60 px-1.5 py-0.5 rounded" title="${t.Finalidade_Modulo || 'Sem módulo'}">
+                ⚙️ ${t.Finalidade_Modulo || 'Geral'}
+              </span>
+              <span class="truncate max-w-[100px] text-slate-400 ml-auto" title="Responsável: ${t.Responsavel || 'Sem responsável'}">
+                👤 ${t.Responsavel || 'Geral'}
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Generate formatted WhatsApp message and copy to clipboard
+    btnCopyWhatsApp.addEventListener('click', () => {
+      const filtered = getFilteredTickets();
+      if (filtered.length === 0) {
+        alert('Nenhum chamado disponível para copiar.');
+        return;
+      }
+
+      const clientName = currentContact?.name ? `Olá *${currentContact.name}*!` : 'Olá!';
+      let message = `${clientName} Segue o status atualizado dos seus chamados pendentes:\n\n`;
+
+      filtered.forEach((t, idx) => {
+        message += `📌 *Protocolo:* ${t.Protocolo_Data}\n`;
+        message += `🔹 *Assunto:* ${t.Assunto}\n`;
+        message += `⚙️ *Módulo:* ${t.Finalidade_Modulo || 'Geral'}\n`;
+        message += `⏳ *Status:* ${t.Status_Atual || 'Em Atendimento'} (${t.Dias_Atraso} dias de atraso)\n`;
+        message += `👤 *Responsável:* ${t.Responsavel || 'Equipe de Suporte'}\n\n`;
+      });
+
+      message += `📊 *Total de chamados em aberto:* ${filtered.length}\n`;
+      message += `Estamos acompanhando o andamento para agilizar o retorno. Qualquer dúvida estou à disposição! 🙌\n`;
+      message += `_Inforgeneses / Lia Chat_`;
+
+      navigator.clipboard.writeText(message).then(() => {
+        const originalText = btnCopyText.textContent;
+        btnCopyText.textContent = 'Copiado para o Clipboard!';
+        btnCopyWhatsApp.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+        btnCopyWhatsApp.classList.add('bg-blue-600', 'hover:bg-blue-500');
+
+        setTimeout(() => {
+          btnCopyText.textContent = originalText;
+          btnCopyWhatsApp.classList.remove('bg-blue-600', 'hover:bg-blue-500');
+          btnCopyWhatsApp.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+        }, 2000);
+      }).catch(err => {
+        console.error('Erro ao copiar texto:', err);
+        alert('Não foi possível copiar automaticamente para a área de transferência.');
+      });
+    });
+
+    // Search events
+    searchInput.addEventListener('input', () => {
+      btnClearSearch.classList.toggle('hidden', !searchInput.value);
+      filterAndRender();
+    });
+
+    btnClearSearch.addEventListener('click', () => {
+      searchInput.value = '';
+      btnClearSearch.classList.add('hidden');
+      filterAndRender();
+    });
+
+    btnRefresh.addEventListener('click', () => {
+      loadTickets(true);
+    });
+
+    // Initialize
+    requestAppContext();
+    loadTickets();
+
+    // Re-check app context after 1 second just in case parent was still loading
+    setTimeout(requestAppContext, 1000);
+  </script>
+</body>
+</html>

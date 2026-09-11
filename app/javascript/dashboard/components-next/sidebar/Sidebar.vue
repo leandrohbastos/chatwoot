@@ -678,6 +678,19 @@ const menuItems = computed(() => {
       ],
     },
     {
+      name: 'Chamados',
+      label: t('SIDEBAR.CHAMADOS'),
+      icon: 'i-lucide-ticket',
+      children: [
+        {
+          name: 'Painel Geral',
+          label: t('SIDEBAR.CHAMADOS_DASHBOARD'),
+          to: accountScopedRoute('chamados_dashboard'),
+          activeOn: ['chamados_dashboard'],
+        },
+      ],
+    },
+    {
       name: 'Reports',
       label: t('SIDEBAR.REPORTS'),
       icon: 'i-lucide-chart-spline',

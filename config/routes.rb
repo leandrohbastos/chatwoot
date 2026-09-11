@@ -38,6 +38,11 @@ Rails.application.routes.draw do
     resource :slack_uploads, only: [:show]
   end
 
+  # Painel de Gestao e Widget de Chamados (Inforgeneses)
+  get '/chamados', to: 'chamados#index'
+  get '/chamados/widget', to: 'chamados#widget'
+  get '/chamados/data', to: 'chamados#data'
+
   get '/health', to: 'health#show'
   get '/api', to: 'api#index'
   namespace :api, defaults: { format: 'json' } do
