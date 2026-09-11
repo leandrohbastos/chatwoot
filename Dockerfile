@@ -64,13 +64,13 @@ RUN apk update && apk add --no-cache build-base musl ruby-full ruby-dev gcc make
 RUN bundle config build.nokogiri --use-system-libraries
 RUN bundle config set --local force_ruby_platform true
 
-ENV MAKE="make -j2"
-ENV GRPC_RUBY_BUILD_PROCS=2
+ENV MAKE="make -j1"
+ENV GRPC_RUBY_BUILD_PROCS=1
 
 # Do not install development or test gems in production
 RUN if [ "$RAILS_ENV" = "production" ]; then \
-  bundle config set without 'development test'; bundle install -j 2 -r 3; \
-  else bundle install -j 2 -r 3; \
+  bundle config set without 'development test'; MAKE="make -j1" bundle install -j 1 -r 3; \
+  else MAKE="make -j1" bundle install -j 1 -r 3; \
   fi
 
 COPY package.json pnpm-lock.yaml ./
@@ -130,7 +130,6 @@ RUN apk update && apk add --no-cache \
   postgresql-client \
   postgresql \
   postgresql-contrib \
-  postgresql-dev \
   redis \
   imagemagick \
   git \
@@ -138,7 +137,7 @@ RUN apk update && apk add --no-cache \
   libxml2 \
   libxslt \
   xz \
-  && (git clone --depth 1 --branch v0.8.0 https://github.com/pgvector/pgvector.git /tmp/pgvector && cd /tmp/pgvector && make && make install && rm -rf /tmp/pgvector) \
+  && (apk add --no-cache pgvector || apk add --no-cache postgresql16-pgvector || apk add --no-cache postgresql17-pgvector || true) \
   && gem install bundler -v "$BUNDLER_VERSION"
 
 # Restrict libvips to its trusted image loaders when generating variants
