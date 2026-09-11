@@ -131,6 +131,8 @@ RUN apk update && apk add --no-cache \
   imagemagick \
   git \
   vips \
+  dos2unix \
+  bash \
   && gem install bundler -v "$BUNDLER_VERSION"
 
 # Restrict libvips to its trusted image loaders when generating variants
@@ -153,12 +155,17 @@ COPY --from=pre-builder /app /app
 # Copy .git_sha file from pre-builder stage
 COPY --from=pre-builder /app/.git_sha /app/.git_sha
 
-WORKDIR /app
+# Copy entrypoints explicitly and install to /entrypoint.sh and /app/docker/entrypoints/rails.sh
+COPY docker/entrypoints /app/docker/entrypoints
+COPY docker/entrypoints/rails.sh /entrypoint.sh
 
-RUN sed -i 's/\r$//' /app/docker/entrypoints/*.sh && \
-    chmod +x /app/docker/entrypoints/rails.sh /app/docker/entrypoints/helpers/*.rb
+RUN dos2unix /entrypoint.sh /app/docker/entrypoints/*.sh /app/docker/entrypoints/helpers/* && \
+    chmod +x /entrypoint.sh /app/docker/entrypoints/*.sh /app/docker/entrypoints/helpers/* && \
+    cp -f /entrypoint.sh /app/docker/entrypoints/rails.sh
+
+WORKDIR /app
 
 EXPOSE 3000
 
-ENTRYPOINT ["/app/docker/entrypoints/rails.sh"]
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["bundle", "exec", "rails", "s", "-p", "3000", "-b", "0.0.0.0"]
