@@ -1,25 +1,13 @@
-<svg
-  width="16"
-  height="16"
-  viewBox="0 0 16 16"
-  fill="none"
-  xmlns="http://www.w3.org/2000/svg"
->
-  <g clip-path="url(#woot-logo-clip-2342424e23u32098)">
-    <path
-      d="M8 16C12.4183 16 16 12.4183 16 8C16 3.58172 12.4183 0 8 0C3.58172 0 0 3.58172 0 8C0 12.4183 3.58172 16 8 16Z"
-      fill="#2781F6"
-    />
-    <path
-      d="M11.4172 11.4172H7.70831C5.66383 11.4172 4 9.75328 4 7.70828C4 5.66394 5.66383 4 7.70835 4C9.75339 4 11.4172 5.66394 11.4172 7.70828V11.4172Z"
-      fill="white"
-      stroke="white"
-      stroke-width="0.1875"
-    />
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="#0026E6"/>
+  <!-- Inforgeneses Mark -->
+  <g transform="translate(18, 12)">
+    <!-- Dot of the i -->
+    <circle cx="160" cy="120" r="34" fill="#FFFFFF"/>
+    <!-- Flowing i and wave ligature -->
+    <path d="M126 195 C126 182 136 172 149 172 H171 C184 172 194 182 194 195 V 265 C208 240 230 220 258 206 C288 191 320 188 348 200 C364 207 372 225 365 241 C358 257 340 265 324 258 C302 249 280 251 258 263 C234 276 215 298 204 326 C198 341 194 358 194 375 C194 388 184 398 171 398 H149 C136 398 126 388 126 375 V195 Z" fill="#FFFFFF"/>
+    <!-- Dynamic right accent stroke of the n -->
+    <path d="M254 398 C241 398 230 388 230 375 C230 348 238 318 252 292 C262 274 277 258 295 246 C308 237 326 241 335 254 C344 267 340 285 327 294 C314 303 303 315 295 328 C284 346 278 366 278 375 C278 388 267 398 254 398 Z" fill="#FFFFFF"/>
+    <path d="M312 398 C299 398 288 388 288 375 C288 335 304 298 330 270 C341 258 360 257 372 268 C384 279 385 298 374 310 C356 330 344 356 344 375 C344 388 333 398 320 398 H312 Z" fill="#FFFFFF"/>
   </g>
-  <defs>
-    <clipPath id="woot-logo-clip-2342424e23u32098">
-      <rect width="16" height="16" fill="white" />
-    </clipPath>
-  </defs>
 </svg>
