@@ -131,6 +131,9 @@ RUN apk update && apk add --no-cache \
   imagemagick \
   git \
   vips \
+  libxml2 \
+  libxslt \
+  xz \
   && gem install bundler -v "$BUNDLER_VERSION"
 
 # Restrict libvips to its trusted image loaders when generating variants
