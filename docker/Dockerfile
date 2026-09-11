@@ -153,4 +153,9 @@ COPY --from=pre-builder /app/.git_sha /app/.git_sha
 
 WORKDIR /app
 
+RUN chmod +x /app/docker/entrypoints/rails.sh /app/docker/entrypoints/helpers/*.rb
+
 EXPOSE 3000
+
+ENTRYPOINT ["docker/entrypoints/rails.sh"]
+CMD ["bundle", "exec", "rails", "s", "-p", "3000", "-b", "0.0.0.0"]
