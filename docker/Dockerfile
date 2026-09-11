@@ -131,8 +131,6 @@ RUN apk update && apk add --no-cache \
   imagemagick \
   git \
   vips \
-  dos2unix \
-  bash \
   && gem install bundler -v "$BUNDLER_VERSION"
 
 # Restrict libvips to its trusted image loaders when generating variants
@@ -159,7 +157,9 @@ COPY --from=pre-builder /app/.git_sha /app/.git_sha
 COPY docker/entrypoints /app/docker/entrypoints
 COPY docker/entrypoints/rails.sh /entrypoint.sh
 
-RUN dos2unix /entrypoint.sh /app/docker/entrypoints/*.sh /app/docker/entrypoints/helpers/* && \
+RUN for f in /entrypoint.sh /app/docker/entrypoints/*.sh /app/docker/entrypoints/helpers/*; do \
+      tr -d '\r' < "$f" > "$f.clean" && mv "$f.clean" "$f"; \
+    done && \
     chmod +x /entrypoint.sh /app/docker/entrypoints/*.sh /app/docker/entrypoints/helpers/* && \
     cp -f /entrypoint.sh /app/docker/entrypoints/rails.sh
 
