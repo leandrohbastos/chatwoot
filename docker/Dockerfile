@@ -24,16 +24,8 @@ ENV NODE_OPTIONS ${NODE_OPTIONS}
 
 ENV BUNDLE_PATH="/gems"
 
-RUN apk update && apk add --no-cache \
-  openssl \
-  tar \
-  build-base \
-  tzdata \
-  postgresql-dev \
-  postgresql-client \
-  git \
-  curl \
-  xz \
+RUN (apk add --no-cache openssl tar build-base tzdata postgresql-dev postgresql-client git curl xz \
+  || (sleep 3 && apk add --no-cache openssl tar build-base tzdata postgresql-dev postgresql-client git curl xz)) \
   && mkdir -p /var/app \
   && gem install bundler -v "$BUNDLER_VERSION"
 
@@ -60,7 +52,8 @@ COPY Gemfile Gemfile.lock ./
 
 # natively compile grpc and protobuf to support alpine musl (dialogflow-docker workflow)
 # https://github.com/googleapis/google-cloud-ruby/issues/13306
-RUN apk update && apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips libxml2-dev libxslt-dev
+RUN (apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips libxml2-dev libxslt-dev \
+  || (sleep 3 && apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips libxml2-dev libxslt-dev))
 RUN bundle config build.nokogiri --use-system-libraries
 RUN bundle config set --local force_ruby_platform true
 
@@ -123,20 +116,8 @@ ARG RAILS_ENV=production
 ENV RAILS_ENV ${RAILS_ENV}
 ENV BUNDLE_PATH="/gems"
 
-RUN apk update && apk add --no-cache \
-  build-base \
-  openssl \
-  tzdata \
-  postgresql-client \
-  postgresql \
-  postgresql-contrib \
-  redis \
-  imagemagick \
-  git \
-  vips \
-  libxml2 \
-  libxslt \
-  xz \
+RUN (apk add --no-cache build-base openssl tzdata postgresql-client postgresql postgresql-contrib redis imagemagick git vips libxml2 libxslt xz \
+  || (sleep 3 && apk add --no-cache build-base openssl tzdata postgresql-client postgresql postgresql-contrib redis imagemagick git vips libxml2 libxslt xz)) \
   && (apk add --no-cache pgvector || apk add --no-cache postgresql16-pgvector || apk add --no-cache postgresql17-pgvector || true) \
   && gem install bundler -v "$BUNDLER_VERSION"
 
