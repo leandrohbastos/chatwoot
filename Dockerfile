@@ -128,12 +128,17 @@ RUN apk update && apk add --no-cache \
   openssl \
   tzdata \
   postgresql-client \
+  postgresql \
+  postgresql-contrib \
+  postgresql-dev \
+  redis \
   imagemagick \
   git \
   vips \
   libxml2 \
   libxslt \
   xz \
+  && (git clone --depth 1 --branch v0.8.0 https://github.com/pgvector/pgvector.git /tmp/pgvector && cd /tmp/pgvector && make && make install && rm -rf /tmp/pgvector) \
   && gem install bundler -v "$BUNDLER_VERSION"
 
 # Restrict libvips to its trusted image loaders when generating variants
