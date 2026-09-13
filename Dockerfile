@@ -52,8 +52,8 @@ COPY Gemfile Gemfile.lock ./
 
 # natively compile grpc and protobuf to support alpine musl (dialogflow-docker workflow)
 # https://github.com/googleapis/google-cloud-ruby/issues/13306
-RUN (apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips libxml2-dev libxslt-dev \
-  || (sleep 3 && apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips libxml2-dev libxslt-dev))
+RUN (apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips libxml2-dev libxslt-dev gcompat libc6-compat \
+  || (sleep 3 && apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips libxml2-dev libxslt-dev gcompat libc6-compat))
 RUN bundle config build.nokogiri --use-system-libraries
 
 
@@ -61,6 +61,7 @@ ENV MAKE="make -j1"
 ENV GRPC_RUBY_BUILD_PROCS=1
 
 # Do not install development or test gems in production
+RUN bundle lock --add-platform x86_64-linux-musl
 RUN if [ "$RAILS_ENV" = "production" ]; then \
   bundle config set without 'development test'; MAKE="make -j1" bundle install -j 1 -r 3; \
   else MAKE="make -j1" bundle install -j 1 -r 3; \
@@ -113,8 +114,8 @@ ARG RAILS_ENV=production
 ENV RAILS_ENV ${RAILS_ENV}
 ENV BUNDLE_PATH="/gems"
 
-RUN (apk add --no-cache build-base openssl tzdata postgresql-client postgresql postgresql-contrib redis imagemagick git vips libxml2 libxslt xz \
-  || (sleep 3 && apk add --no-cache build-base openssl tzdata postgresql-client postgresql postgresql-contrib redis imagemagick git vips libxml2 libxslt xz)) \
+RUN (apk add --no-cache build-base openssl tzdata postgresql-client postgresql postgresql-contrib redis imagemagick git vips libxml2 libxslt xz gcompat libc6-compat \
+  || (sleep 3 && apk add --no-cache build-base openssl tzdata postgresql-client postgresql postgresql-contrib redis imagemagick git vips libxml2 libxslt xz gcompat libc6-compat)) \
   && (apk add --no-cache pgvector || apk add --no-cache postgresql16-pgvector || apk add --no-cache postgresql17-pgvector || true) \
   && gem install bundler -v "$BUNDLER_VERSION"
 
