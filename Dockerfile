@@ -55,7 +55,7 @@ COPY Gemfile Gemfile.lock ./
 RUN (apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips libxml2-dev libxslt-dev \
   || (sleep 3 && apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips libxml2-dev libxslt-dev))
 RUN bundle config build.nokogiri --use-system-libraries
-RUN bundle config set --local force_ruby_platform true
+
 
 ENV MAKE="make -j1"
 ENV GRPC_RUBY_BUILD_PROCS=1
@@ -108,9 +108,6 @@ ENV EXECJS_RUNTIME ${EXECJS_RUNTIME}
 
 ARG RAILS_SERVE_STATIC_FILES=true
 ENV RAILS_SERVE_STATIC_FILES ${RAILS_SERVE_STATIC_FILES}
-
-ARG BUNDLE_FORCE_RUBY_PLATFORM=1
-ENV BUNDLE_FORCE_RUBY_PLATFORM ${BUNDLE_FORCE_RUBY_PLATFORM}
 
 ARG RAILS_ENV=production
 ENV RAILS_ENV ${RAILS_ENV}
