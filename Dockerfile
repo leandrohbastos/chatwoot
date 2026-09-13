@@ -54,14 +54,12 @@ COPY Gemfile Gemfile.lock ./
 # https://github.com/googleapis/google-cloud-ruby/issues/13306
 RUN (apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips libxml2-dev libxslt-dev gcompat libc6-compat \
   || (sleep 3 && apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips libxml2-dev libxslt-dev gcompat libc6-compat))
-RUN bundle config build.nokogiri --use-system-libraries
 
 
 ENV MAKE="make -j1"
 ENV GRPC_RUBY_BUILD_PROCS=1
 
 # Do not install development or test gems in production
-RUN bundle lock --add-platform x86_64-linux-musl
 RUN if [ "$RAILS_ENV" = "production" ]; then \
   bundle config set without 'development test'; MAKE="make -j1" bundle install -j 1 -r 3; \
   else MAKE="make -j1" bundle install -j 1 -r 3; \

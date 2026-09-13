@@ -1207,6 +1207,11 @@ DEPENDENCIES
   wisper (= 2.0.0)
   working_hours
 
+PLATFORMS
+  ruby
+  x86_64-linux
+  x86_64-linux-musl
+
 RUBY VERSION
    ruby 3.4.4p34
 
