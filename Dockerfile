@@ -60,15 +60,19 @@ ENV MAKE="make -j1"
 ENV GRPC_RUBY_BUILD_PROCS=1
 
 # Do not install development or test gems in production
+RUN bundle lock --add-platform x86_64-linux-musl
 RUN if [ "$RAILS_ENV" = "production" ]; then \
   bundle config set without 'development test'; MAKE="make -j1" bundle install -j 1 -r 3; \
   else MAKE="make -j1" bundle install -j 1 -r 3; \
   fi
 
+RUN cp Gemfile.lock /tmp/Gemfile.lock.resolved
+
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm i
 
 COPY . /app
+RUN cp /tmp/Gemfile.lock.resolved /app/Gemfile.lock
 
 # creating a log directory so that image wont fail when RAILS_LOG_TO_STDOUT is false
 # https://github.com/chatwoot/chatwoot/issues/701
