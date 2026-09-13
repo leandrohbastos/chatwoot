@@ -1,0 +1,55 @@
+version: '3'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    restart: always
+    ports:
+      - '3000:3000'
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+    depends_on:
+      - postgres
+      - redis
+
+  sidekiq:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    restart: always
+    command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=chatwoot
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+  redis:
+    image: redis:alpine
+    restart: always
+    command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\""]
+    env_file: .env
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
