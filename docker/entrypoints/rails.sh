@@ -74,10 +74,8 @@ if [ "$POSTGRES_HOST" != "127.0.0.1" ] && [ -n "$POSTGRES_HOST" ]; then
   if [ -f "$PG_HELPER" ]; then
     eval $(ruby "$PG_HELPER")
   fi
-  PG_READY="pg_isready -h $POSTGRES_HOST -p ${POSTGRES_PORT:-5432} -U ${POSTGRES_USERNAME:-postgres}"
 
-  until $PG_READY
-  do
+  until pg_isready -h "$POSTGRES_HOST" -p "${POSTGRES_PORT:-5432}" -U "${POSTGRES_USERNAME:-postgres}"; do
     echo "Waiting for postgres ($POSTGRES_HOST:${POSTGRES_PORT:-5432}) to become ready..."
     sleep 2
   done
@@ -94,8 +92,12 @@ if [ "$1" = "bundle" ] && [ "$2" = "exec" ] && [ "$3" = "rails" ] && [ "$4" = "s
   echo "Preparing database (running db:chatwoot_prepare)..."
   (cd "$APP_ROOT" && bundle exec rails db:chatwoot_prepare) || echo "db:chatwoot_prepare finished or skipped."
 
-  echo "Starting Sidekiq background processor..."
-  (cd "$APP_ROOT" && bundle exec sidekiq -C config/sidekiq.yml) &
+  if [ "$DISABLE_EMBEDDED_SIDEKIQ" != "true" ] && [ "$DISABLE_EMBEDDED_SIDEKIQ" != "1" ]; then
+    echo "Starting Sidekiq background processor..."
+    (cd "$APP_ROOT" && bundle exec sidekiq -C config/sidekiq.yml) &
+  else
+    echo "Embedded Sidekiq disabled (managed by dedicated service)."
+  fi
 fi
 
 # Execute the main process of the container

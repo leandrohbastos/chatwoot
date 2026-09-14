@@ -1,6 +1,6 @@
 # pre-build stage
-FROM node:24-alpine AS node
-FROM ruby:3.4.4-alpine3.21 AS pre-builder
+FROM node:24-slim AS node
+FROM ruby:3.4.4-slim AS pre-builder
 
 ARG NODE_VERSION="24.13.0"
 ARG PNPM_VERSION="10.2.0"
@@ -8,24 +8,33 @@ ENV NODE_VERSION=${NODE_VERSION}
 ENV PNPM_VERSION=${PNPM_VERSION}
 
 # ARG default to production settings
-# For development docker-compose file overrides ARGS
 ARG BUNDLE_WITHOUT="development:test"
-ENV BUNDLE_WITHOUT ${BUNDLE_WITHOUT}
+ENV BUNDLE_WITHOUT=${BUNDLE_WITHOUT}
 ENV BUNDLER_VERSION=2.5.16
 
 ARG RAILS_SERVE_STATIC_FILES=true
-ENV RAILS_SERVE_STATIC_FILES ${RAILS_SERVE_STATIC_FILES}
+ENV RAILS_SERVE_STATIC_FILES=${RAILS_SERVE_STATIC_FILES}
 
 ARG RAILS_ENV=production
-ENV RAILS_ENV ${RAILS_ENV}
+ENV RAILS_ENV=${RAILS_ENV}
 
 ARG NODE_OPTIONS="--max-old-space-size=4096 --openssl-legacy-provider"
-ENV NODE_OPTIONS ${NODE_OPTIONS}
+ENV NODE_OPTIONS=${NODE_OPTIONS}
 
 ENV BUNDLE_PATH="/gems"
+ENV PATH="/gems/bin:$PATH"
 
-RUN (apk add --no-cache openssl tar build-base tzdata postgresql-dev postgresql-client git curl xz \
-  || (sleep 3 && apk add --no-cache openssl tar build-base tzdata postgresql-dev postgresql-client git curl xz)) \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    curl \
+    pkg-config \
+    libpq-dev \
+    libvips-dev \
+    libyaml-dev \
+    tzdata \
+    shared-mime-info \
+  && rm -rf /var/lib/apt/lists/* \
   && mkdir -p /var/app \
   && gem install bundler -v "$BUNDLER_VERSION"
 
@@ -36,13 +45,12 @@ RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 
 RUN npm install -g pnpm@${PNPM_VERSION}
 
-RUN echo 'export PNPM_HOME="/root/.local/share/pnpm"' >> /root/.shrc \
-  && echo 'export PATH="$PNPM_HOME:$PATH"' >> /root/.shrc \
+RUN echo 'export PNPM_HOME="/root/.local/share/pnpm"' >> /root/.bashrc \
+  && echo 'export PATH="$PNPM_HOME:$PATH"' >> /root/.bashrc \
   && export PNPM_HOME="/root/.local/share/pnpm" \
   && export PATH="$PNPM_HOME:$PATH" \
   && pnpm --version
 
-# Persist the environment variables in Docker
 ENV PNPM_HOME="/root/.local/share/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
@@ -50,20 +58,14 @@ WORKDIR /app
 
 COPY Gemfile Gemfile.lock ./
 
-# natively compile grpc and protobuf to support alpine musl (dialogflow-docker workflow)
-# https://github.com/googleapis/google-cloud-ruby/issues/13306
-RUN (apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips libxml2-dev libxslt-dev \
-  || (sleep 3 && apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips libxml2-dev libxslt-dev))
-RUN bundle config build.nokogiri --use-system-libraries
-RUN bundle config set --local force_ruby_platform true
-
 ENV MAKE="make -j1"
-ENV GRPC_RUBY_BUILD_PROCS=1
 
-# Do not install development or test gems in production
+# Install gems (uses precompiled x86_64-linux gems for nokogiri, grpc, protobuf, etc.)
 RUN if [ "$RAILS_ENV" = "production" ]; then \
-  bundle config set without 'development test'; MAKE="make -j1" bundle install -j 1 -r 3; \
-  else MAKE="make -j1" bundle install -j 1 -r 3; \
+    bundle config set without 'development test'; \
+    bundle install -j 2 -r 3; \
+  else \
+    bundle install -j 2 -r 3; \
   fi
 
 COPY package.json pnpm-lock.yaml ./
@@ -77,8 +79,8 @@ RUN mkdir -p /app/log
 
 # generate production assets if production environment
 RUN if [ "$RAILS_ENV" = "production" ]; then \
-  SECRET_KEY_BASE=precompile_placeholder RAILS_LOG_TO_STDOUT=enabled bundle exec rake assets:precompile \
-  && rm -rf spec node_modules tmp/cache; \
+    SECRET_KEY_BASE=precompile_placeholder RAILS_LOG_TO_STDOUT=enabled bundle exec rake assets:precompile \
+    && rm -rf spec node_modules tmp/cache; \
   fi
 
 # Generate .git_sha file with current commit hash (with fallback if .git is not in context)
@@ -86,13 +88,13 @@ ARG GIT_SHA=""
 RUN (git rev-parse HEAD 2>/dev/null || echo "${GIT_SHA:-custom-build}") > /app/.git_sha
 
 # Remove unnecessary files
-RUN rm -rf /gems/ruby/3.4.0/cache/*.gem \
-  && find /gems/ruby/3.4.0/gems/ \( -name "*.c" -o -name "*.o" \) -delete \
+RUN rm -rf /gems/cache/*.gem \
+  && find /gems/ \( -name "*.c" -o -name "*.o" \) -delete \
   && rm -rf .git \
   && rm -f .gitignore
 
 # final build stage
-FROM ruby:3.4.4-alpine3.21
+FROM ruby:3.4.4-slim
 
 ARG NODE_VERSION="24.13.0"
 ARG PNPM_VERSION="10.2.0"
@@ -100,26 +102,40 @@ ENV NODE_VERSION=${NODE_VERSION}
 ENV PNPM_VERSION=${PNPM_VERSION}
 
 ARG BUNDLE_WITHOUT="development:test"
-ENV BUNDLE_WITHOUT ${BUNDLE_WITHOUT}
+ENV BUNDLE_WITHOUT=${BUNDLE_WITHOUT}
 ENV BUNDLER_VERSION=2.5.16
 
 ARG EXECJS_RUNTIME="Disabled"
-ENV EXECJS_RUNTIME ${EXECJS_RUNTIME}
+ENV EXECJS_RUNTIME=${EXECJS_RUNTIME}
 
 ARG RAILS_SERVE_STATIC_FILES=true
-ENV RAILS_SERVE_STATIC_FILES ${RAILS_SERVE_STATIC_FILES}
-
-ARG BUNDLE_FORCE_RUBY_PLATFORM=1
-ENV BUNDLE_FORCE_RUBY_PLATFORM ${BUNDLE_FORCE_RUBY_PLATFORM}
+ENV RAILS_SERVE_STATIC_FILES=${RAILS_SERVE_STATIC_FILES}
 
 ARG RAILS_ENV=production
-ENV RAILS_ENV ${RAILS_ENV}
+ENV RAILS_ENV=${RAILS_ENV}
 ENV BUNDLE_PATH="/gems"
+ENV PATH="/gems/bin:$PATH"
 
-RUN (apk add --no-cache build-base openssl tzdata postgresql-client postgresql postgresql-contrib redis imagemagick git vips libxml2 libxslt xz \
-  || (sleep 3 && apk add --no-cache build-base openssl tzdata postgresql-client postgresql postgresql-contrib redis imagemagick git vips libxml2 libxslt xz)) \
-  && (apk add --no-cache pgvector || apk add --no-cache postgresql16-pgvector || apk add --no-cache postgresql17-pgvector || true) \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    libpq5 \
+    libvips42 \
+    imagemagick \
+    git \
+    curl \
+    tzdata \
+    shared-mime-info \
+    libjemalloc2 \
+  && rm -rf /var/lib/apt/lists/* \
   && gem install bundler -v "$BUNDLER_VERSION"
+
+# Configure jemalloc for optimal memory usage and low fragmentation
+RUN if [ -f /usr/lib/x86_64-linux-gnu/libjemalloc.so.2 ]; then \
+      ln -s /usr/lib/x86_64-linux-gnu/libjemalloc.so.2 /usr/lib/libjemalloc.so.2; \
+    elif [ -f /usr/lib/aarch64-linux-gnu/libjemalloc.so.2 ]; then \
+      ln -s /usr/lib/aarch64-linux-gnu/libjemalloc.so.2 /usr/lib/libjemalloc.so.2; \
+    fi
+ENV LD_PRELOAD=/usr/lib/libjemalloc.so.2
 
 # Restrict libvips to its trusted image loaders when generating variants
 ENV VIPS_BLOCK_UNTRUSTED=1
@@ -128,8 +144,7 @@ COPY --from=node /usr/local/bin/node /usr/local/bin/
 COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 
 RUN if [ "$RAILS_ENV" != "production" ]; then \
-  apk add --no-cache curl \
-  && ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+  ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
   && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
   && npm install -g pnpm@${PNPM_VERSION} \
   && pnpm --version; \
