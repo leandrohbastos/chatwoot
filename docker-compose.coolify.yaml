@@ -16,7 +16,7 @@ services:
       - RAILS_ENV=production
       - INSTALLATION_ENV=docker
       - RAILS_LOG_TO_STDOUT=${RAILS_LOG_TO_STDOUT:-true}
-      - FORCE_SSL=${FORCE_SSL:-true}
+      - FORCE_SSL=${FORCE_SSL:-false}
       - FRONTEND_URL=${FRONTEND_URL:-https://liachat.clickupbot.com}
       - SECRET_KEY_BASE=${SECRET_KEY_BASE}
       - POSTGRES_HOST=postgres
@@ -59,7 +59,7 @@ services:
       - RAILS_ENV=production
       - INSTALLATION_ENV=docker
       - RAILS_LOG_TO_STDOUT=${RAILS_LOG_TO_STDOUT:-true}
-      - FORCE_SSL=${FORCE_SSL:-true}
+      - FORCE_SSL=${FORCE_SSL:-false}
       - FRONTEND_URL=${FRONTEND_URL:-https://liachat.clickupbot.com}
       - SECRET_KEY_BASE=${SECRET_KEY_BASE}
       - POSTGRES_HOST=postgres

@@ -4,7 +4,18 @@ Rails.application.configure do
   #########################################
 
   # We need the application frontend url to be used in our emails
-  config.action_mailer.default_url_options = { host: ENV['FRONTEND_URL'] } if ENV['FRONTEND_URL'].present?
+  if ENV['FRONTEND_URL'].present?
+    begin
+      frontend_uri = URI.parse(ENV['FRONTEND_URL'])
+      config.action_mailer.default_url_options = {
+        host: frontend_uri.host || ENV['FRONTEND_URL'],
+        protocol: frontend_uri.scheme || 'https',
+        port: [80, 443, nil].include?(frontend_uri.port) ? nil : frontend_uri.port
+      }.compact
+    rescue StandardError
+      config.action_mailer.default_url_options = { host: ENV['FRONTEND_URL'] }
+    end
+  end
   # We load certain mailer templates from our database. This ensures changes to it is reflected immediately
   config.action_mailer.perform_caching = false
   config.action_mailer.perform_deliveries = true
@@ -22,8 +33,8 @@ Rails.application.configure do
   smtp_settings[:password] = ENV.fetch('SMTP_PASSWORD', nil)
   smtp_settings[:enable_starttls_auto] = ActiveModel::Type::Boolean.new.cast(ENV.fetch('SMTP_ENABLE_STARTTLS_AUTO', true))
   smtp_settings[:openssl_verify_mode] = ENV['SMTP_OPENSSL_VERIFY_MODE'] if ENV['SMTP_OPENSSL_VERIFY_MODE'].present?
-  smtp_settings[:ssl] = ActiveModel::Type::Boolean.new.cast(ENV.fetch('SMTP_SSL', true)) if ENV['SMTP_SSL']
-  smtp_settings[:tls] = ActiveModel::Type::Boolean.new.cast(ENV.fetch('SMTP_TLS', true)) if ENV['SMTP_TLS']
+  smtp_settings[:ssl] = ActiveModel::Type::Boolean.new.cast(ENV.fetch('SMTP_SSL', false)) if ENV['SMTP_SSL'].present?
+  smtp_settings[:tls] = ActiveModel::Type::Boolean.new.cast(ENV.fetch('SMTP_TLS', false)) if ENV['SMTP_TLS'].present?
   smtp_settings[:open_timeout] = ENV['SMTP_OPEN_TIMEOUT'].to_i if ENV['SMTP_OPEN_TIMEOUT'].present?
   smtp_settings[:read_timeout] = ENV['SMTP_READ_TIMEOUT'].to_i if ENV['SMTP_READ_TIMEOUT'].present?
 
