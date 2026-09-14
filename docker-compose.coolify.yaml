@@ -29,9 +29,6 @@ services:
 
   sidekiq:
     image: chatwoot:latest
-    build:
-      context: .
-      dockerfile: ./Dockerfile
     restart: always
     command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
     environment:
