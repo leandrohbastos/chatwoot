@@ -4,7 +4,7 @@ import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import { useVuelidate } from '@vuelidate/core';
-import { required, email } from '@vuelidate/validators';
+import { required, email, minLength, sameAs } from '@vuelidate/validators';
 import Button from 'dashboard/components-next/button/Button.vue';
 
 const emit = defineEmits(['close']);
@@ -15,17 +15,27 @@ const { t } = useI18n();
 const agentName = ref('');
 const agentEmail = ref('');
 const selectedRoleId = ref('agent');
+const agentPassword = ref('');
+const agentPasswordConfirmation = ref('');
 
 const rules = {
   agentName: { required },
   agentEmail: { required, email },
   selectedRoleId: { required },
+  agentPassword: {
+    minLength: (val) => !val || val.length >= 6,
+  },
+  agentPasswordConfirmation: {
+    sameAsPassword: (val) => !agentPassword.value || val === agentPassword.value,
+  },
 };
 
 const v$ = useVuelidate(rules, {
   agentName,
   agentEmail,
   selectedRoleId,
+  agentPassword,
+  agentPasswordConfirmation,
 });
 
 const uiFlags = useMapGetter('agents/getUIFlags');
@@ -75,6 +85,11 @@ const addAgent = async () => {
       payload.custom_role_id = selectedRole.value.id;
     } else {
       payload.role = selectedRole.value.name;
+    }
+
+    if (agentPassword.value) {
+      payload.password = agentPassword.value;
+      payload.password_confirmation = agentPasswordConfirmation.value;
     }
 
     await store.dispatch('agents/create', payload);
@@ -144,6 +159,39 @@ const addAgent = async () => {
             :placeholder="$t('AGENT_MGMT.ADD.FORM.EMAIL.PLACEHOLDER')"
             @input="v$.agentEmail.$touch"
           />
+        </label>
+      </div>
+
+      <div class="w-full">
+        <label :class="{ error: v$.agentPassword.$error }">
+          {{ $t('AGENT_MGMT.ADD.FORM.PASSWORD.LABEL') }}
+          <input
+            v-model="agentPassword"
+            type="password"
+            :placeholder="$t('AGENT_MGMT.ADD.FORM.PASSWORD.PLACEHOLDER')"
+            @input="v$.agentPassword.$touch"
+          />
+          <span v-if="v$.agentPassword.$error" class="message">
+            {{ $t('AGENT_MGMT.ADD.FORM.PASSWORD.ERROR') }}
+          </span>
+        </label>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 mb-2">
+          {{ $t('AGENT_MGMT.ADD.FORM.PASSWORD.HINT') }}
+        </p>
+      </div>
+
+      <div class="w-full">
+        <label :class="{ error: v$.agentPasswordConfirmation.$error }">
+          {{ $t('AGENT_MGMT.ADD.FORM.PASSWORD_CONFIRMATION.LABEL') }}
+          <input
+            v-model="agentPasswordConfirmation"
+            type="password"
+            :placeholder="$t('AGENT_MGMT.ADD.FORM.PASSWORD_CONFIRMATION.PLACEHOLDER')"
+            @input="v$.agentPasswordConfirmation.$touch"
+          />
+          <span v-if="v$.agentPasswordConfirmation.$error" class="message">
+            {{ $t('AGENT_MGMT.ADD.FORM.PASSWORD_CONFIRMATION.ERROR') }}
+          </span>
         </label>
       </div>
 

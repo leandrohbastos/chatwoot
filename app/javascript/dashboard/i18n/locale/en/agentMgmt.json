@@ -40,6 +40,17 @@
           "LABEL": "Email Address",
           "PLACEHOLDER": "Please enter an email address of the agent"
         },
+        "PASSWORD": {
+          "LABEL": "Password",
+          "PLACEHOLDER": "Minimum 6 characters (uppercase, lowercase, number, special character)",
+          "ERROR": "Password does not meet requirements",
+          "HINT": "Leave blank to send an invitation email to the agent"
+        },
+        "PASSWORD_CONFIRMATION": {
+          "LABEL": "Confirm Password",
+          "PLACEHOLDER": "Repeat the password",
+          "ERROR": "Passwords do not match"
+        },
         "SUBMIT": "Add Agent"
       },
       "API": {
@@ -81,6 +92,17 @@
           "LABEL": "Availability",
           "PLACEHOLDER": "Please select an availability status",
           "ERROR": "Availability is required"
+        },
+        "PASSWORD": {
+          "LABEL": "New Password",
+          "PLACEHOLDER": "Leave blank to keep current password",
+          "ERROR": "Password does not meet requirements",
+          "HINT": "Minimum 6 characters (uppercase, lowercase, number, special character)"
+        },
+        "PASSWORD_CONFIRMATION": {
+          "LABEL": "Confirm New Password",
+          "PLACEHOLDER": "Repeat the new password",
+          "ERROR": "Passwords do not match"
         },
         "SUBMIT": "Edit Agent"
       },

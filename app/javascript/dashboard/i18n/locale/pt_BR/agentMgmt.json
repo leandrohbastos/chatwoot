@@ -40,6 +40,17 @@
           "LABEL": "Endereço de e-mail",
           "PLACEHOLDER": "Por favor, insira um endereço de e-mail do agente"
         },
+        "PASSWORD": {
+          "LABEL": "Senha",
+          "PLACEHOLDER": "Mínimo 6 caracteres (maiúscula, minúscula, número, caractere especial)",
+          "ERROR": "A senha não atende aos requisitos",
+          "HINT": "Deixe em branco para enviar um e-mail de convite ao agente"
+        },
+        "PASSWORD_CONFIRMATION": {
+          "LABEL": "Confirmar Senha",
+          "PLACEHOLDER": "Repita a senha",
+          "ERROR": "As senhas não coincidem"
+        },
         "SUBMIT": "Adicionar agente"
       },
       "API": {
@@ -81,6 +92,17 @@
           "LABEL": "Disponibilidade",
           "PLACEHOLDER": "Por favor, selecione a disponibilidade do agente",
           "ERROR": "A disponibilidade é necessária"
+        },
+        "PASSWORD": {
+          "LABEL": "Nova Senha",
+          "PLACEHOLDER": "Deixe em branco para manter a senha atual",
+          "ERROR": "A senha não atende aos requisitos",
+          "HINT": "Mínimo 6 caracteres (maiúscula, minúscula, número, caractere especial)"
+        },
+        "PASSWORD_CONFIRMATION": {
+          "LABEL": "Confirmar Nova Senha",
+          "PLACEHOLDER": "Repita a nova senha",
+          "ERROR": "As senhas não coincidem"
         },
         "SUBMIT": "Editar agente"
       },

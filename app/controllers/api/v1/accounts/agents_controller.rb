@@ -13,6 +13,7 @@ class Api::V1::Accounts::AgentsController < Api::V1::Accounts::BaseController
       role: new_agent_params['role'],
       availability: new_agent_params['availability'],
       auto_offline: new_agent_params['auto_offline'],
+      password: new_agent_params['password'].presence,
       inviter: current_user,
       account: Current.account
     )
@@ -25,6 +26,7 @@ class Api::V1::Accounts::AgentsController < Api::V1::Accounts::BaseController
   def update
     @agent.update!(agent_params.slice(:name).compact)
     @agent.current_account_user.update!(agent_params.slice(*account_user_attributes).compact)
+    update_agent_password if agent_params[:password].present?
   end
 
   def destroy
@@ -60,7 +62,7 @@ class Api::V1::Accounts::AgentsController < Api::V1::Accounts::BaseController
   end
 
   def allowed_agent_params
-    [:name, :email, :role, :availability, :auto_offline]
+    [:name, :email, :role, :availability, :auto_offline, :password, :password_confirmation]
   end
 
   def agent_params
@@ -68,7 +70,14 @@ class Api::V1::Accounts::AgentsController < Api::V1::Accounts::BaseController
   end
 
   def new_agent_params
-    params.require(:agent).permit(:email, :name, :role, :availability, :auto_offline)
+    params.require(:agent).permit(:email, :name, :role, :availability, :auto_offline, :password, :password_confirmation)
+  end
+
+  def update_agent_password
+    @agent.password = agent_params[:password]
+    @agent.password_confirmation = agent_params[:password_confirmation] || agent_params[:password]
+    @agent.confirm unless @agent.confirmed?
+    @agent.save!
   end
 
   def agents

@@ -5,6 +5,7 @@ import { required, minLength } from '@vuelidate/validators';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
+import { parseAPIErrorResponse } from 'dashboard/store/utils/api';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Auth from '../../../../api/auth';
 import wootConstants from 'dashboard/constants/globals';
@@ -51,17 +52,27 @@ const agentName = ref(props.name);
 const agentAvailability = ref(props.availability);
 const selectedRoleId = ref(props.customRoleId || props.type);
 const agentCredentials = ref({ email: props.email });
+const agentPassword = ref('');
+const agentPasswordConfirmation = ref('');
 
 const rules = {
   agentName: { required, minLength: minLength(1) },
   selectedRoleId: { required },
   agentAvailability: { required },
+  agentPassword: {
+    minLength: (val) => !val || val.length >= 6,
+  },
+  agentPasswordConfirmation: {
+    sameAsPassword: (val) => !agentPassword.value || val === agentPassword.value,
+  },
 };
 
 const v$ = useVuelidate(rules, {
   agentName,
   selectedRoleId,
   agentAvailability,
+  agentPassword,
+  agentPasswordConfirmation,
 });
 
 const pageTitle = computed(
@@ -135,11 +146,19 @@ const editAgent = async () => {
       payload.custom_role_id = null;
     }
 
+    if (agentPassword.value) {
+      payload.password = agentPassword.value;
+      payload.password_confirmation = agentPasswordConfirmation.value;
+    }
+
     await store.dispatch('agents/update', payload);
     useAlert(t('AGENT_MGMT.EDIT.API.SUCCESS_MESSAGE'));
     emit('close');
   } catch (error) {
-    useAlert(t('AGENT_MGMT.EDIT.API.ERROR_MESSAGE'));
+    const errorMessage =
+      parseAPIErrorResponse(error) ||
+      t('AGENT_MGMT.EDIT.API.ERROR_MESSAGE');
+    useAlert(errorMessage);
   }
 };
 
@@ -200,6 +219,39 @@ const resetPassword = async () => {
           </select>
           <span v-if="v$.agentAvailability.$error" class="message">
             {{ $t('AGENT_MGMT.EDIT.FORM.AGENT_AVAILABILITY.ERROR') }}
+          </span>
+        </label>
+      </div>
+
+      <div class="w-full">
+        <label :class="{ error: v$.agentPassword.$error }">
+          {{ $t('AGENT_MGMT.EDIT.FORM.PASSWORD.LABEL') }}
+          <input
+            v-model="agentPassword"
+            type="password"
+            :placeholder="$t('AGENT_MGMT.EDIT.FORM.PASSWORD.PLACEHOLDER')"
+            @input="v$.agentPassword.$touch"
+          />
+          <span v-if="v$.agentPassword.$error" class="message">
+            {{ $t('AGENT_MGMT.EDIT.FORM.PASSWORD.ERROR') }}
+          </span>
+        </label>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 mb-2">
+          {{ $t('AGENT_MGMT.EDIT.FORM.PASSWORD.HINT') }}
+        </p>
+      </div>
+
+      <div class="w-full">
+        <label :class="{ error: v$.agentPasswordConfirmation.$error }">
+          {{ $t('AGENT_MGMT.EDIT.FORM.PASSWORD_CONFIRMATION.LABEL') }}
+          <input
+            v-model="agentPasswordConfirmation"
+            type="password"
+            :placeholder="$t('AGENT_MGMT.EDIT.FORM.PASSWORD_CONFIRMATION.PLACEHOLDER')"
+            @input="v$.agentPasswordConfirmation.$touch"
+          />
+          <span v-if="v$.agentPasswordConfirmation.$error" class="message">
+            {{ $t('AGENT_MGMT.EDIT.FORM.PASSWORD_CONFIRMATION.ERROR') }}
           </span>
         </label>
       </div>

@@ -17,7 +17,9 @@ class AgentBuilder
   # @param inviter [User] the user who is inviting the agent (Current.user in most cases).
   # @param availability [String] the availability status of the user, defaults to 'offline' if not provided.
   # @param auto_offline [Boolean] the auto offline status of the user.
-  pattr_initialize [:email, { name: '' }, :inviter, :account, { role: :agent }, { availability: :offline }, { auto_offline: false }]
+  # @param password [String] optional password to set directly (skips email confirmation when provided).
+  pattr_initialize [:email, { name: '' }, :inviter, :account, { role: :agent }, { availability: :offline }, { auto_offline: false },
+                    { password: nil }]
 
   # Creates a user and account user in a transaction.
   # @return [User] the created user.
@@ -41,23 +43,44 @@ class AgentBuilder
     account.usage_limits[:agents] > account.account_users.count
   end
 
-  # Finds a user by email or creates a new one with a temporary password.
+  # Finds a user by email or creates a new one.
+  # When a password is provided, sets it directly and skips email confirmation.
   # @return [User] the found or created user.
   def find_or_create_user
     @new_user = false
     user = User.from_email(email)
-    return user if user
+
+    if user
+      update_existing_user_password(user) if password.present?
+      return user
+    end
 
     @name = email.split('@').first if @name.blank?
-    temp_password = "1!aA#{SecureRandom.alphanumeric(12)}"
-    User.new(email: email, name: @name, password: temp_password, password_confirmation: temp_password).tap do |new_user|
-      new_user.skip_confirmation_notification!
-      new_user.save!
-      @new_user = true
+
+    if password.present?
+      User.new(email: email, name: @name, password: password, password_confirmation: password).tap do |new_user|
+        new_user.skip_confirmation!
+        new_user.save!
+        @new_user = false
+      end
+    else
+      temp_password = "1!aA#{SecureRandom.alphanumeric(12)}"
+      User.new(email: email, name: @name, password: temp_password, password_confirmation: temp_password).tap do |new_user|
+        new_user.skip_confirmation_notification!
+        new_user.save!
+        @new_user = true
+      end
     end
   end
 
-  # Checks if the user needs confirmation.
+  def update_existing_user_password(user)
+    user.password = password
+    user.password_confirmation = password
+    user.confirm unless user.confirmed?
+    user.save!
+  end
+
+  # Checks if the user needs confirmation (new user created without a direct password).
   # @return [Boolean] true if the user is persisted and not confirmed, false otherwise.
   def user_needs_confirmation?
     @new_user && @user.persisted? && !@user.confirmed?

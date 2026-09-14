@@ -6,6 +6,8 @@ class SuperAdmin::UsersController < SuperAdmin::ApplicationController
     resource = resource_class.new(resource_params)
     authorize_resource(resource)
 
+    resource.skip_confirmation! if resource_params[:password].present?
+
     if resource.save
       redirect_to super_admin_user_path(resource), notice: translate_with_resource('create.success')
     else
