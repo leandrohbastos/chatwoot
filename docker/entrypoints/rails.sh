@@ -80,6 +80,18 @@ if [ "$POSTGRES_HOST" != "127.0.0.1" ] && [ -n "$POSTGRES_HOST" ]; then
     sleep 2
   done
   echo "Database ready to accept connections."
+
+  # Ensure target database and extensions exist (handles legacy volumes initialized with 'chatwoot')
+  export PGPASSWORD="${POSTGRES_PASSWORD:-chatwoot}"
+  TARGET_DB="${POSTGRES_DATABASE:-chatwoot_production}"
+  echo "Verifying database $TARGET_DB on $POSTGRES_HOST..."
+  if ! psql -h "$POSTGRES_HOST" -p "${POSTGRES_PORT:-5432}" -U "${POSTGRES_USERNAME:-postgres}" -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = '$TARGET_DB'" 2>/dev/null | grep -q 1; then
+    echo "Database $TARGET_DB does not exist. Creating..."
+    psql -h "$POSTGRES_HOST" -p "${POSTGRES_PORT:-5432}" -U "${POSTGRES_USERNAME:-postgres}" -d postgres -c "CREATE DATABASE \"$TARGET_DB\";" 2>/dev/null || true
+  fi
+
+  echo "Ensuring vector extension on $TARGET_DB..."
+  psql -h "$POSTGRES_HOST" -p "${POSTGRES_PORT:-5432}" -U "${POSTGRES_USERNAME:-postgres}" -d "$TARGET_DB" -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>/dev/null || true
 fi
 
 # 4. In production gems are already installed in the image

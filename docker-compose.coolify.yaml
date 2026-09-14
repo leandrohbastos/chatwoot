@@ -9,7 +9,6 @@ services:
     restart: always
     ports:
       - '3000:3000'
-    env_file: .env
     environment:
       - NODE_ENV=production
       - RAILS_ENV=production
@@ -24,6 +23,9 @@ services:
     depends_on:
       - postgres
       - redis
+    networks:
+      - default
+      - coolify
 
   sidekiq:
     image: chatwoot:latest
@@ -32,7 +34,6 @@ services:
       dockerfile: ./Dockerfile
     restart: always
     command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
-    env_file: .env
     environment:
       - NODE_ENV=production
       - RAILS_ENV=production
@@ -47,6 +48,8 @@ services:
       - web
       - postgres
       - redis
+    networks:
+      - default
 
   postgres:
     image: pgvector/pgvector:pg16
@@ -57,16 +60,26 @@ services:
       - POSTGRES_DB=${POSTGRES_DATABASE:-chatwoot_production}
       - POSTGRES_USER=${POSTGRES_USERNAME:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-chatwoot}
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    networks:
+      - default
 
   redis:
     image: redis:alpine
     restart: always
     command: ["sh", "-c", "if [ -n \"$$REDIS_PASSWORD\" ]; then exec redis-server --requirepass \"$$REDIS_PASSWORD\"; else exec redis-server; fi"]
-    env_file: .env
     volumes:
       - redis_data:/data
+    networks:
+      - default
 
 volumes:
   postgres_data:
   redis_data:
+
+networks:
+  default:
+  coolify:
+    external: true
+
 
