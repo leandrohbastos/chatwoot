@@ -33,8 +33,8 @@ Rails.application.configure do
   smtp_settings[:password] = ENV.fetch('SMTP_PASSWORD', nil)
   smtp_settings[:enable_starttls_auto] = ActiveModel::Type::Boolean.new.cast(ENV.fetch('SMTP_ENABLE_STARTTLS_AUTO', true))
   smtp_settings[:openssl_verify_mode] = ENV['SMTP_OPENSSL_VERIFY_MODE'] if ENV['SMTP_OPENSSL_VERIFY_MODE'].present?
-  smtp_settings[:ssl] = ActiveModel::Type::Boolean.new.cast(ENV.fetch('SMTP_SSL', false)) if ENV['SMTP_SSL'].present?
-  smtp_settings[:tls] = ActiveModel::Type::Boolean.new.cast(ENV.fetch('SMTP_TLS', false)) if ENV['SMTP_TLS'].present?
+  smtp_settings[:ssl] = true if ActiveModel::Type::Boolean.new.cast(ENV['SMTP_SSL'])
+  smtp_settings[:tls] = true if ActiveModel::Type::Boolean.new.cast(ENV['SMTP_TLS'])
   smtp_settings[:open_timeout] = ENV['SMTP_OPEN_TIMEOUT'].to_i if ENV['SMTP_OPEN_TIMEOUT'].present?
   smtp_settings[:read_timeout] = ENV['SMTP_READ_TIMEOUT'].to_i if ENV['SMTP_READ_TIMEOUT'].present?
 
